@@ -9,6 +9,7 @@ import {
   DEFAULT_TOOL_ID,
   getToolMeta,
 } from "./docker.js";
+import { fetchSglangMetrics, getSglangMetricsUrl } from "./sglang.js";
 
 const app = new Hono();
 
@@ -112,6 +113,29 @@ app.get("/api/probe", async (c) => {
     stdout: out,
     stderr: err || undefined,
   });
+});
+
+app.get("/api/sglang/config", (c) => {
+  try {
+    const metricsUrl = getSglangMetricsUrl();
+    const u = new URL(metricsUrl);
+    return c.json({
+      metricsUrl,
+      host: u.host,
+      hint: "Launch SGLang with --enable-metrics (scripts in this repo include it). Prometheus text is served at /metrics on the server port.",
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return c.json({ error: message }, 400);
+  }
+});
+
+app.get("/api/sglang/metrics", async (c) => {
+  const result = await fetchSglangMetrics();
+  if (!result.ok) {
+    return c.json(result, 502);
+  }
+  return c.json(result);
 });
 
 const port = Number(process.env.MONITOR_API_PORT ?? "8787");

@@ -22,6 +22,7 @@ python3 -m sglang.launch_server \
     --tp-size ${TENSOR_PARALLEL} \
     --host ${HOST} \
     --port ${PORT} \
+    --enable-metrics \
     --attention-backend ${ATTENTION_BACKEND} \
     --fp8-gemm-backend ${FP8_GEMM_BACKEND} \
     --tool-call-parser ${TOOL_CALL_PARSER} --reasoning-parser ${REASONING_PARSER} \

@@ -24,7 +24,7 @@ From the container shell (paths follow your repo layout under `/workspace`), for
 
 ## Stack monitor (`apps/monitor`)
 
-Local **Vite + TypeScript** UI with a small **Hono** API that calls the Docker CLI. It lists running containers and runs whitelisted scripts under [`tools/`](tools/) inside the selected container via `docker exec` (expects this repo at `/workspace`, as in `run-docker.sh`). The UI lets you pick the tool (`collect_env.py`, `check_gpu.py`, `hf_env.py`, `cuda_env.sh`). The API exposes `GET /api/tools` and `GET /api/probe?container=NAME&tool=collect_env` (`tool` defaults to `collect_env`).
+Local **Vite + TypeScript** UI with a small **Hono** API. **Docker / tools** tab: lists running containers and runs whitelisted scripts under [`tools/`](tools/) via `docker exec` (repo at `/workspace`). **SGLang metrics** tab: proxies `GET /metrics` from the SGLang HTTP port on the host (default `http://127.0.0.1:8000/metrics`). Model launch scripts use `--enable-metrics` so Prometheus text is available. API: `GET /api/tools`, `GET /api/probe?...`, `GET /api/sglang/config`, `GET /api/sglang/metrics`.
 
 ### Run in development
 
@@ -49,7 +49,7 @@ npm run build
 
 This writes the client to `apps/monitor/dist/client` and the API to `apps/monitor/dist/server`. To run the built app locally: in one terminal `npm start` (API), in another `npm run preview` (Vite serves `dist/client` and proxies `/api` to the API). Or use `npm run dev` during development.
 
-Environment: **`MONITOR_API_PORT`** (optional) overrides the API port (default `8787`).
+Environment (monitor API): **`MONITOR_API_PORT`** (optional, default `8787`). SGLang scrape target: **`SGLANG_BASE_URL`** (default `http://127.0.0.1:8000`), **`SGLANG_METRICS_PATH`** (default `/metrics`), or set **`SGLANG_METRICS_URL`** to a full URL. Hostnames are restricted to loopback unless **`SGLANG_ALLOW_ANY_HOST=1`**. Optional **`SGLANG_FETCH_TIMEOUT_MS`** (default `8000`).
 
 ## Requirements
 

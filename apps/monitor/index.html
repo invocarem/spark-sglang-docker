@@ -11,31 +11,90 @@
       <header class="header">
         <h1>SGLang stack monitor</h1>
         <p class="lede">
-          Lists running Docker containers and runs scripts under <code>tools/</code> inside the
-          selected container (repo mounted at <code>/workspace</code>).
+          Inspect the Docker environment (<code>tools/</code>) and, when the server is up with
+          <code>--enable-metrics</code>, browse Prometheus metrics from the published port (default
+          <code>8000</code>).
         </p>
       </header>
 
-      <section class="panel">
-        <div class="row">
-          <button type="button" id="btn-refresh" class="btn primary">Refresh containers</button>
-          <label class="field">
-            <span>Container</span>
-            <select id="sel-container" aria-label="Container"></select>
-          </label>
-          <label class="field field-grow">
-            <span>Tool</span>
-            <select id="sel-tool" aria-label="Tool script"></select>
-          </label>
-          <button type="button" id="btn-run" class="btn">Run tool</button>
-        </div>
-        <p id="status" class="status" aria-live="polite"></p>
-      </section>
+      <nav class="tabs" role="tablist" aria-label="Monitor sections">
+        <button type="button" role="tab" id="tab-docker" aria-selected="true" aria-controls="panel-docker" data-tab="docker">
+          Docker / tools
+        </button>
+        <button type="button" role="tab" id="tab-sglang" aria-selected="false" aria-controls="panel-sglang" data-tab="sglang">
+          SGLang metrics
+        </button>
+      </nav>
 
-      <section class="panel">
-        <h2>Output</h2>
-        <pre id="out" class="out">Choose a container and tool, then Run.</pre>
-      </section>
+      <div
+        id="panel-docker"
+        role="tabpanel"
+        aria-labelledby="tab-docker"
+        class="tab-panel"
+        data-panel="docker"
+      >
+        <section class="panel panel-nested">
+          <div class="row">
+            <button type="button" id="btn-refresh" class="btn primary">Refresh containers</button>
+            <label class="field">
+              <span>Container</span>
+              <select id="sel-container" aria-label="Container"></select>
+            </label>
+            <label class="field field-grow">
+              <span>Tool</span>
+              <select id="sel-tool" aria-label="Tool script"></select>
+            </label>
+            <button type="button" id="btn-run" class="btn">Run tool</button>
+          </div>
+          <p id="status-docker" class="status" aria-live="polite"></p>
+        </section>
+
+        <section class="panel panel-nested">
+          <h2>Output</h2>
+          <pre id="out" class="out">Choose a container and tool, then Run.</pre>
+        </section>
+      </div>
+
+      <div
+        id="panel-sglang"
+        role="tabpanel"
+        aria-labelledby="tab-sglang"
+        class="tab-panel hidden"
+        data-panel="sglang"
+        hidden
+      >
+        <section class="panel panel-nested">
+          <p id="sglang-config" class="config-line"></p>
+          <div class="row">
+            <button type="button" id="btn-sglang-refresh" class="btn primary">Refresh metrics</button>
+            <label class="field">
+              <span>Auto-refresh</span>
+              <select id="sel-sglang-interval" aria-label="Auto-refresh interval">
+                <option value="0">Off</option>
+                <option value="3000">Every 3 s</option>
+                <option value="10000" selected>Every 10 s</option>
+                <option value="30000">Every 30 s</option>
+              </select>
+            </label>
+          </div>
+          <p id="status-sglang" class="status" aria-live="polite"></p>
+        </section>
+
+        <section class="panel panel-nested">
+          <h2>SGLang-related lines</h2>
+          <p class="hint">Lines from <code>/metrics</code> whose text includes <code>sglang</code> (case-insensitive).</p>
+          <pre id="sglang-highlights" class="out out-short">Open this tab to load metrics.</pre>
+        </section>
+
+        <section class="panel panel-nested">
+          <h2>Full metrics (preview)</h2>
+          <label class="checkbox-row">
+            <input type="checkbox" id="chk-sglang-raw" />
+            <span>Show raw Prometheus text (may be large)</span>
+          </label>
+          <pre id="sglang-raw" class="out hidden">—</pre>
+        </section>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

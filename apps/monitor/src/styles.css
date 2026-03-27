@@ -155,6 +155,84 @@ select {
   color: var(--danger);
 }
 
+.tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 1.25rem;
+  padding: 0.2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  width: fit-content;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+.tabs button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 7px;
+  padding: 0.45rem 0.85rem;
+  background: transparent;
+  color: var(--muted);
+}
+
+.tabs button:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--bg) 50%, transparent);
+}
+
+.tabs button[aria-selected="true"] {
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.tab-panel {
+  margin-top: 0.5rem;
+}
+
+.tab-panel.hidden,
+.out.hidden {
+  display: none;
+}
+
+.panel-nested {
+  margin-top: 0.75rem;
+}
+
+.panel-nested:first-child {
+  margin-top: 0;
+}
+
+.config-line {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.checkbox-row input {
+  accent-color: var(--accent);
+}
+
 .out {
   margin: 0;
   padding: 0.85rem;
@@ -167,4 +245,8 @@ select {
   word-break: break-word;
   max-height: min(70vh, 720px);
   overflow: auto;
+}
+
+.out-short {
+  max-height: min(40vh, 360px);
 }
