@@ -68,21 +68,90 @@ export async function listRunningContainers(): Promise<RunningContainer[]> {
   return rows;
 }
 
-const PROBE_PATH = "/workspace/tools/collect_env.py";
+const WORKSPACE_TOOLS = "/workspace/tools";
 
-export async function probeContainer(container: string): Promise<DockerResult> {
-  assertSafeContainerName(container);
-  return runDocker([
-    "exec",
-    container,
-    "python3",
-    PROBE_PATH,
-  ]);
+export type ToolMeta = {
+  id: string;
+  label: string;
+  description: string;
+  format: "json" | "text";
+  path: string;
+  runner: "python3" | "bash";
+};
+
+export const TOOLS: readonly ToolMeta[] = [
+  {
+    id: "collect_env",
+    label: "collect_env.py",
+    description: "Full stack JSON (packages, torch CUDA, nvidia-smi)",
+    format: "json",
+    path: `${WORKSPACE_TOOLS}/collect_env.py`,
+    runner: "python3",
+  },
+  {
+    id: "check_gpu",
+    label: "check_gpu.py",
+    description: "Short GPU / torch / nvidia-smi text summary",
+    format: "text",
+    path: `${WORKSPACE_TOOLS}/check_gpu.py`,
+    runner: "python3",
+  },
+  {
+    id: "hf_env",
+    label: "hf_env.py",
+    description: "Hugging Face env as JSON (token masked)",
+    format: "json",
+    path: `${WORKSPACE_TOOLS}/hf_env.py`,
+    runner: "python3",
+  },
+  {
+    id: "cuda_env",
+    label: "cuda_env.sh",
+    description: "CUDA / NVIDIA-related shell environment variables",
+    format: "text",
+    path: `${WORKSPACE_TOOLS}/cuda_env.sh`,
+    runner: "bash",
+  },
+] as const;
+
+const TOOL_BY_ID = new Map(TOOLS.map((t) => [t.id, t]));
+
+export type ToolId = (typeof TOOLS)[number]["id"];
+
+export function getToolMeta(id: string): ToolMeta | undefined {
+  return TOOL_BY_ID.get(id);
 }
 
-export async function probeWithFallbackPython(container: string): Promise<DockerResult> {
-  assertSafeContainerName(container);
-  const first = await runDocker(["exec", container, "python3", PROBE_PATH]);
-  if (first.code === 0) return first;
-  return runDocker(["exec", container, "python", PROBE_PATH]);
+async function execPythonScript(
+  container: string,
+  scriptPath: string,
+): Promise<DockerResult> {
+  const try3 = await runDocker(["exec", container, "python3", scriptPath]);
+  if (try3.code === 0) return try3;
+  return runDocker(["exec", container, "python", scriptPath]);
 }
+
+async function execBashScript(
+  container: string,
+  scriptPath: string,
+): Promise<DockerResult> {
+  return runDocker(["exec", container, "bash", scriptPath]);
+}
+
+export async function runToolInContainer(
+  container: string,
+  toolId: string,
+): Promise<DockerResult> {
+  assertSafeContainerName(container);
+  const meta = getToolMeta(toolId);
+  if (!meta) {
+    throw new Error(`Unknown tool: ${toolId}`);
+  }
+  if (meta.runner === "bash") {
+    return execBashScript(container, meta.path);
+  }
+  return execPythonScript(container, meta.path);
+}
+
+/** Default when query omits `tool` (backward compatible). */
+export const DEFAULT_TOOL_ID: ToolId = "collect_env";

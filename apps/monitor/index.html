@@ -11,9 +11,8 @@
       <header class="header">
         <h1>SGLang stack monitor</h1>
         <p class="lede">
-          Lists running Docker containers and runs
-          <code>tools/collect_env.py</code> inside the selected container (repo mounted at
-          <code>/workspace</code>).
+          Lists running Docker containers and runs scripts under <code>tools/</code> inside the
+          selected container (repo mounted at <code>/workspace</code>).
         </p>
       </header>
 
@@ -24,14 +23,18 @@
             <span>Container</span>
             <select id="sel-container" aria-label="Container"></select>
           </label>
-          <button type="button" id="btn-probe" class="btn">Probe environment</button>
+          <label class="field field-grow">
+            <span>Tool</span>
+            <select id="sel-tool" aria-label="Tool script"></select>
+          </label>
+          <button type="button" id="btn-run" class="btn">Run tool</button>
         </div>
         <p id="status" class="status" aria-live="polite"></p>
       </section>
 
       <section class="panel">
-        <h2>Probe result</h2>
-        <pre id="out" class="out">Run a probe to see JSON here.</pre>
+        <h2>Output</h2>
+        <pre id="out" class="out">Choose a container and tool, then Run.</pre>
       </section>
     </div>
     <script type="module" src="/src/main.ts"></script>

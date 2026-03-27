@@ -3,8 +3,11 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import {
   listRunningContainers,
-  probeWithFallbackPython,
+  runToolInContainer,
   assertSafeContainerName,
+  TOOLS,
+  DEFAULT_TOOL_ID,
+  getToolMeta,
 } from "./docker.js";
 
 const app = new Hono();
@@ -17,6 +20,17 @@ app.use(
 );
 
 app.get("/api/health", (c) => c.json({ ok: true }));
+
+app.get("/api/tools", (c) =>
+  c.json({
+    tools: TOOLS.map((t) => ({
+      id: t.id,
+      label: t.label,
+      description: t.description,
+      format: t.format,
+    })),
+  }),
+);
 
 app.get("/api/containers", async (c) => {
   try {
@@ -39,12 +53,30 @@ app.get("/api/probe", async (c) => {
     return c.json({ parseError: "Invalid container name" }, 400);
   }
 
-  const { code, stdout, stderr } = await probeWithFallbackPython(container);
+  const toolParam = c.req.query("tool")?.trim() || DEFAULT_TOOL_ID;
+  const meta = getToolMeta(toolParam);
+  if (!meta) {
+    return c.json(
+      { error: "Unknown tool", tool: toolParam, valid: TOOLS.map((t) => t.id) },
+      400,
+    );
+  }
+
+  let result;
+  try {
+    result = await runToolInContainer(container, toolParam);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return c.json({ error: message }, 400);
+  }
+
+  const { code, stdout, stderr } = result;
 
   if (code !== 0) {
     return c.json(
       {
         error: "docker exec failed",
+        tool: toolParam,
         exitCode: code,
         stderr: stderr.trim(),
         stdout: stdout.trim(),
@@ -53,19 +85,33 @@ app.get("/api/probe", async (c) => {
     );
   }
 
-  try {
-    const data = JSON.parse(stdout) as unknown;
-    return c.json({ container, data });
-  } catch {
-    return c.json(
-      {
-        error: "Probe did not return valid JSON",
-        stdout: stdout.slice(0, 4000),
-        stderr: stderr.trim(),
-      },
-      502,
-    );
+  const out = stdout.trim();
+  const err = stderr.trim();
+
+  if (meta.format === "json") {
+    try {
+      const data = JSON.parse(out) as unknown;
+      return c.json({ container, tool: toolParam, format: "json", data });
+    } catch {
+      return c.json(
+        {
+          error: "Tool did not return valid JSON",
+          tool: toolParam,
+          stdout: out.slice(0, 4000),
+          stderr: err,
+        },
+        502,
+      );
+    }
   }
+
+  return c.json({
+    container,
+    tool: toolParam,
+    format: "text",
+    stdout: out,
+    stderr: err || undefined,
+  });
 });
 
 const port = Number(process.env.MONITOR_API_PORT ?? "8787");

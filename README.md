@@ -24,7 +24,7 @@ From the container shell (paths follow your repo layout under `/workspace`), for
 
 ## Stack monitor (`apps/monitor`)
 
-Local **Vite + TypeScript** UI with a small **Hono** API that calls the Docker CLI. It lists running containers and runs [`tools/collect_env.py`](tools/collect_env.py) inside the selected container via `docker exec` (expects this repo at `/workspace`, as in `run-docker.sh`).
+Local **Vite + TypeScript** UI with a small **Hono** API that calls the Docker CLI. It lists running containers and runs whitelisted scripts under [`tools/`](tools/) inside the selected container via `docker exec` (expects this repo at `/workspace`, as in `run-docker.sh`). The UI lets you pick the tool (`collect_env.py`, `check_gpu.py`, `hf_env.py`, `cuda_env.sh`). The API exposes `GET /api/tools` and `GET /api/probe?container=NAME&tool=collect_env` (`tool` defaults to `collect_env`).
 
 ### Run in development
 

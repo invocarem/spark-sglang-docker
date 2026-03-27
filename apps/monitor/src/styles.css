@@ -92,6 +92,15 @@ code {
   min-width: 220px;
 }
 
+.field-grow {
+  flex: 1 1 280px;
+  min-width: 280px;
+}
+
+.field-grow select {
+  max-width: 100%;
+}
+
 .field span {
   font-size: 0.8rem;
   color: var(--muted);

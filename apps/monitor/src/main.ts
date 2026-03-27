@@ -6,11 +6,20 @@ type ContainerRow = {
   Status: string;
 };
 
+type ToolInfo = {
+  id: string;
+  label: string;
+  description: string;
+  format: "json" | "text";
+};
+
 const DEFAULT_HINT = "sglang_node_tf5";
+const DEFAULT_TOOL_ID = "collect_env";
 
 const sel = document.querySelector<HTMLSelectElement>("#sel-container");
+const selTool = document.querySelector<HTMLSelectElement>("#sel-tool");
 const btnRefresh = document.querySelector<HTMLButtonElement>("#btn-refresh");
-const btnProbe = document.querySelector<HTMLButtonElement>("#btn-probe");
+const btnRun = document.querySelector<HTMLButtonElement>("#btn-run");
 const statusEl = document.querySelector<HTMLParagraphElement>("#status");
 const outEl = document.querySelector<HTMLPreElement>("#out");
 
@@ -27,6 +36,59 @@ function setStatus(message: string, isError = false): void {
 
 function prettyJson(value: unknown): string {
   return JSON.stringify(value, null, 2);
+}
+
+function formatProbeResponse(body: Record<string, unknown>): string {
+  if (typeof body.error === "string" && body.error) {
+    return prettyJson(body);
+  }
+  const fmt = body.format;
+  if (fmt === "json" && "data" in body) {
+    return prettyJson(body);
+  }
+  if (fmt === "text") {
+    const parts: string[] = [];
+    if (typeof body.stdout === "string" && body.stdout) parts.push(body.stdout);
+    if (typeof body.stderr === "string" && body.stderr) {
+      parts.push("--- stderr ---");
+      parts.push(body.stderr);
+    }
+    if (parts.length === 0) return prettyJson(body);
+    return parts.join("\n");
+  }
+  return prettyJson(body);
+}
+
+async function loadTools(): Promise<void> {
+  if (!selTool) return;
+  try {
+    const res = await fetch("/api/tools");
+    const body = (await res.json()) as { tools?: ToolInfo[]; error?: string };
+    if (!res.ok) {
+      selTool.innerHTML = "";
+      const opt = document.createElement("option");
+      opt.value = DEFAULT_TOOL_ID;
+      opt.textContent = `Fallback: ${DEFAULT_TOOL_ID}`;
+      selTool.appendChild(opt);
+      return;
+    }
+    const tools = body.tools ?? [];
+    selTool.innerHTML = "";
+    for (const t of tools) {
+      const opt = document.createElement("option");
+      opt.value = t.id;
+      opt.textContent = `${t.label} — ${t.description}`;
+      selTool.appendChild(opt);
+    }
+    const hasDefault = tools.some((t) => t.id === DEFAULT_TOOL_ID);
+    if (hasDefault) selTool.value = DEFAULT_TOOL_ID;
+  } catch {
+    selTool.innerHTML = "";
+    const opt = document.createElement("option");
+    opt.value = DEFAULT_TOOL_ID;
+    opt.textContent = DEFAULT_TOOL_ID;
+    selTool.appendChild(opt);
+  }
 }
 
 async function loadContainers(): Promise<void> {
@@ -70,38 +132,39 @@ async function loadContainers(): Promise<void> {
   }
 }
 
-async function runProbe(): Promise<void> {
-  if (!sel || !btnProbe || !outEl) return;
+async function runTool(): Promise<void> {
+  if (!sel || !btnRun || !outEl || !selTool) return;
   const container = sel.value.trim();
   if (!container) {
     setStatus("Pick a container first.", true);
     return;
   }
-  setStatus(`Probing ${container}…`);
-  btnProbe.disabled = true;
+  const tool = selTool.value.trim() || DEFAULT_TOOL_ID;
+  setStatus(`Running ${tool} in ${container}…`);
+  btnRun.disabled = true;
   try {
     const res = await fetch(
-      `/api/probe?container=${encodeURIComponent(container)}`,
+      `/api/probe?container=${encodeURIComponent(container)}&tool=${encodeURIComponent(tool)}`,
     );
     const body = (await res.json()) as Record<string, unknown>;
+    outEl.textContent = formatProbeResponse(body);
     if (!res.ok) {
-      outEl.textContent = prettyJson(body);
       setStatus(
-        typeof body.error === "string" ? body.error : `Probe failed (${res.status})`,
+        typeof body.error === "string" ? body.error : `Run failed (${res.status})`,
         true,
       );
       return;
     }
-    outEl.textContent = prettyJson(body);
-    setStatus("Probe OK.");
+    setStatus(`OK — ${tool}`);
   } catch (e) {
     outEl.textContent = "";
     setStatus(e instanceof Error ? e.message : String(e), true);
   } finally {
-    btnProbe.disabled = false;
+    btnRun.disabled = false;
   }
 }
 
 btnRefresh?.addEventListener("click", () => void loadContainers());
-btnProbe?.addEventListener("click", () => void runProbe());
+btnRun?.addEventListener("click", () => void runTool());
+void loadTools();
 void loadContainers();
