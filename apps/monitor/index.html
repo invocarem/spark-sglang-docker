@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SGLang stack monitor</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div class="layout">
+      <header class="header">
+        <h1>SGLang stack monitor</h1>
+        <p class="lede">
+          Lists running Docker containers and runs
+          <code>tools/collect_env.py</code> inside the selected container (repo mounted at
+          <code>/workspace</code>).
+        </p>
+      </header>
+
+      <section class="panel">
+        <div class="row">
+          <button type="button" id="btn-refresh" class="btn primary">Refresh containers</button>
+          <label class="field">
+            <span>Container</span>
+            <select id="sel-container" aria-label="Container"></select>
+          </label>
+          <button type="button" id="btn-probe" class="btn">Probe environment</button>
+        </div>
+        <p id="status" class="status" aria-live="polite"></p>
+      </section>
+
+      <section class="panel">
+        <h2>Probe result</h2>
+        <pre id="out" class="out">Run a probe to see JSON here.</pre>
+      </section>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
