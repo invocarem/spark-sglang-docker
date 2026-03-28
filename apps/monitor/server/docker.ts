@@ -70,7 +70,13 @@ export async function listRunningContainers(): Promise<RunningContainer[]> {
 
 const WORKSPACE_TOOLS = "/workspace/tools";
 
-export type ToolMeta = {
+/** Max lines for docker logs tool (env MONITOR_DOCKER_LOGS_TAIL, default 200). */
+const DOCKER_LOGS_TAIL_LINES = Math.min(
+  Math.max(1, Number(process.env.MONITOR_DOCKER_LOGS_TAIL ?? "200")),
+  10_000,
+);
+
+export type ExecToolMeta = {
   id: string;
   label: string;
   description: string;
@@ -79,7 +85,26 @@ export type ToolMeta = {
   runner: "python3" | "bash";
 };
 
+export type DockerLogsToolMeta = {
+  id: string;
+  label: string;
+  description: string;
+  format: "text";
+  kind: "docker_logs";
+  tailLines: number;
+};
+
+export type ToolMeta = ExecToolMeta | DockerLogsToolMeta;
+
 export const TOOLS: readonly ToolMeta[] = [
+  {
+    id: "docker_logs",
+    label: "docker logs",
+    description: `Host: docker logs --tail ${DOCKER_LOGS_TAIL_LINES} (stdout/stderr)`,
+    format: "text",
+    kind: "docker_logs",
+    tailLines: DOCKER_LOGS_TAIL_LINES,
+  },
   {
     id: "collect_env",
     label: "collect_env.py",
@@ -147,10 +172,14 @@ export async function runToolInContainer(
   if (!meta) {
     throw new Error(`Unknown tool: ${toolId}`);
   }
-  if (meta.runner === "bash") {
-    return execBashScript(container, meta.path);
+  if ("kind" in meta && meta.kind === "docker_logs") {
+    return runDocker(["logs", "--tail", String(meta.tailLines), container]);
   }
-  return execPythonScript(container, meta.path);
+  const execMeta = meta as ExecToolMeta;
+  if (execMeta.runner === "bash") {
+    return execBashScript(container, execMeta.path);
+  }
+  return execPythonScript(container, execMeta.path);
 }
 
 /** Default when query omits `tool` (backward compatible). */
