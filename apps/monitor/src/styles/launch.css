@@ -1,0 +1,148 @@
+/* Launch tab layout */
+
+.launch-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.launch-panel .panel-nested {
+  margin-top: 0;
+}
+
+.launch-panel .panel-nested + .panel-nested {
+  margin-top: 0;
+}
+
+.launch-lead {
+  margin: 0 0 0.75rem;
+  font-size: 0.92rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.launch-more {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.launch-more summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 500;
+  list-style: none;
+}
+
+.launch-more summary::-webkit-details-marker {
+  display: none;
+}
+
+.launch-more summary::before {
+  content: "▸ ";
+  display: inline-block;
+  transition: transform 0.12s ease;
+}
+
+.launch-more[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.launch-more p {
+  margin: 0.5rem 0 0;
+  padding-left: 0.35rem;
+  border-left: 2px solid var(--border);
+  line-height: 1.5;
+}
+
+.launch-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 1rem;
+  align-items: end;
+}
+
+@media (max-width: 640px) {
+  .launch-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.launch-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.launch-toolbar__main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  flex: 1 1 auto;
+}
+
+.launch-toolbar__run {
+  margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .launch-toolbar__run {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .launch-toolbar__run .btn {
+    width: 100%;
+  }
+}
+
+.launch-status-box {
+  margin-top: 1rem;
+  padding: 0.75rem 0.9rem;
+  background: color-mix(in srgb, var(--bg) 65%, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.launch-status-box .status {
+  margin: 0;
+}
+
+.launch-status-box .status + .status {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  opacity: 0.95;
+}
+
+.launch-status-box .status.status--meta {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.launch-apply-row {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border);
+  min-height: 0;
+}
+
+.launch-apply-row .btn {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.launch-model-section .field {
+  margin-top: 0.35rem;
+}
+
+/* Shared with Logs tab toolbar */
+.launch-log-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+}

@@ -1,3 +1,9 @@
+/**
+ * SGLang metrics: `/api/sglang/metrics` (Prometheus text filtered for display).
+ */
+
+import { fetchSglangConfig } from "../sglang/config";
+
 type SglangMetricsOk = {
   ok: true;
   url: string;
@@ -55,28 +61,19 @@ function startSglangPollFromUi(): void {
   sglangPollTimer = setInterval(() => void fetchSglangMetricsDisplay(), ms);
 }
 
-async function loadSglangConfig(): Promise<void> {
+async function loadSglangConfigLine(): Promise<void> {
   if (!sglangConfigEl) return;
-  try {
-    const res = await fetch("/api/sglang/config");
-    const body = (await res.json()) as {
-      metricsUrl?: string;
-      host?: string;
-      hint?: string;
-      error?: string;
-    };
-    if (!res.ok) {
-      sglangConfigEl.textContent = body.error ?? "Config error";
-      return;
-    }
-    const parts = [
-      `Metrics URL: ${body.metricsUrl ?? "—"}`,
-      body.hint ? ` — ${body.hint}` : "",
-    ];
-    sglangConfigEl.textContent = parts.join("");
-  } catch (e) {
-    sglangConfigEl.textContent = e instanceof Error ? e.message : String(e);
+  const { ok, config } = await fetchSglangConfig();
+  if (!ok) {
+    sglangConfigEl.textContent = config.error ?? "Config error";
+    return;
   }
+  const parts = [
+    `Metrics URL: ${config.metricsUrl ?? "—"}`,
+    config.inferenceBaseUrl ? ` · Inference: ${config.inferenceBaseUrl}` : "",
+    config.hint ? ` — ${config.hint}` : "",
+  ];
+  sglangConfigEl.textContent = parts.join("");
 }
 
 async function fetchSglangMetricsDisplay(): Promise<void> {
@@ -130,7 +127,7 @@ export async function ensureSglangSession(): Promise<void> {
     return;
   }
   sglangLoadedOnce = true;
-  await loadSglangConfig();
+  await loadSglangConfigLine();
   await fetchSglangMetricsDisplay();
   startSglangPollFromUi();
 }

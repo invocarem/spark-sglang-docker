@@ -1,6 +1,6 @@
 # spark-sglang-docker
 
-Docker-based workflow and **companion monitor** for running [SGLang](https://github.com/sgl-project/sglang) with large language models. The upstream image bundles CUDA, PyTorch, Transformers, SGLang, and related bits; the monitor surfaces **what the running container actually has** so launches and debugging involve less guesswork.
+Docker-based workflow and **SGLang Stack Dashboard** (local UI) for running [SGLang](https://github.com/sgl-project/sglang) with large language models. The upstream image bundles CUDA, PyTorch, Transformers, SGLang, and related bits; the dashboard surfaces **what the running container actually has** so launches and debugging involve less guesswork.
 
 ## Quick start
 
@@ -22,9 +22,9 @@ From the container shell (paths follow your repo layout under `/workspace`), for
 
 (Adjust the script path if your working directory inside the container differs.)
 
-## Stack monitor (`apps/monitor`)
+## SGLang Stack Dashboard (`apps/monitor`)
 
-Local **Vite + TypeScript** UI with a small **Hono** API. **Docker / tools** tab: lists running containers and runs whitelisted scripts under [`tools/`](tools/) via `docker exec` (repo at `/workspace`). **SGLang metrics** tab: proxies `GET /metrics` from the SGLang HTTP port on the host (default `http://127.0.0.1:8000/metrics`). Model launch scripts use `--enable-metrics` so Prometheus text is available. API: `GET /api/tools`, `GET /api/probe?...`, `GET /api/sglang/config`, `GET /api/sglang/metrics`.
+Local **Vite + TypeScript** UI with a small **Hono** API. **Docker / tools** tab: lists running containers and runs whitelisted scripts under [`tools/`](tools/) via `docker exec` (repo at `/workspace`). **SGLang metrics** tab: proxies `GET /metrics` from the SGLang HTTP port on the host (default `http://127.0.0.1:8000/metrics`). Model launch scripts use `--enable-metrics` so Prometheus text is available. **Side chat**: sends `POST /v1/chat/completions` (OpenAI-compatible) to the same SGLang base URL via `POST /api/sglang/chat/completions` (non-streaming). API: `GET /api/tools`, `GET /api/probe?...`, `GET /api/sglang/config`, `GET /api/sglang/metrics`, `POST /api/sglang/chat/completions`.
 
 ### Run in development
 
@@ -49,7 +49,7 @@ npm run build
 
 This writes the client to `apps/monitor/dist/client` and the API to `apps/monitor/dist/server`. To run the built app locally: in one terminal `npm start` (API), in another `npm run preview` (Vite serves `dist/client` and proxies `/api` to the API). Or use `npm run dev` during development.
 
-Environment (monitor API): **`MONITOR_API_PORT`** (optional, default `8787`). SGLang scrape target: **`SGLANG_BASE_URL`** (default `http://127.0.0.1:8000`), **`SGLANG_METRICS_PATH`** (default `/metrics`), or set **`SGLANG_METRICS_URL`** to a full URL. Hostnames are restricted to loopback unless **`SGLANG_ALLOW_ANY_HOST=1`**. Optional **`SGLANG_FETCH_TIMEOUT_MS`** (default `8000`).
+Environment (dashboard API): **`MONITOR_API_PORT`** (optional, default `8787`). SGLang scrape target: **`SGLANG_BASE_URL`** (default `http://127.0.0.1:8000`), **`SGLANG_METRICS_PATH`** (default `/metrics`), or set **`SGLANG_METRICS_URL`** to a full URL (chat uses the same inferred HTTP origin). Hostnames are restricted to loopback unless **`SGLANG_ALLOW_ANY_HOST=1`**. Optional **`SGLANG_FETCH_TIMEOUT_MS`** (default `8000`) for metrics; **`SGLANG_CHAT_TIMEOUT_MS`** (default `120000`) for chat proxy requests.
 
 ## Requirements
 

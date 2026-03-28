@@ -100,7 +100,7 @@ export const TOOLS: readonly ToolMeta[] = [
   {
     id: "docker_logs",
     label: "docker logs",
-    description: `Host: docker logs --tail ${DOCKER_LOGS_TAIL_LINES} (stdout/stderr)`,
+    description: `Host: docker logs --tail ${DOCKER_LOGS_TAIL_LINES} (main process only; Launch tab output is in /workspace/.monitor/sglang-launch.log)`,
     format: "text",
     kind: "docker_logs",
     tailLines: DOCKER_LOGS_TAIL_LINES,
@@ -161,6 +161,24 @@ async function execBashScript(
   scriptPath: string,
 ): Promise<DockerResult> {
   return runDocker(["exec", container, "bash", scriptPath]);
+}
+
+/** Run a command in the container in detached mode (returns immediately; use for long-running processes). */
+export async function dockerExecDetached(
+  container: string,
+  args: string[],
+): Promise<DockerResult> {
+  assertSafeContainerName(container);
+  return runDocker(["exec", "-d", container, ...args]);
+}
+
+/** Blocking `docker exec` for short probes (e.g. pgrep). */
+export async function dockerExec(
+  container: string,
+  args: string[],
+): Promise<DockerResult> {
+  assertSafeContainerName(container);
+  return runDocker(["exec", container, ...args]);
 }
 
 export async function runToolInContainer(

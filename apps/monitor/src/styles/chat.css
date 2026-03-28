@@ -1,0 +1,118 @@
+/* Side chat panel (`features/chat.ts`) */
+
+@media (max-width: 960px) {
+  .chat-aside {
+    position: relative;
+    max-height: none;
+  }
+}
+
+.chat-aside {
+  position: sticky;
+  top: 1rem;
+  padding: 1rem 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  max-height: min(calc(100vh - 2rem), 900px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.chat-aside__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.chat-aside__hint {
+  margin: 0;
+}
+
+.field-chat-model {
+  min-width: 0;
+}
+
+.field-chat-model input {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.45rem 0.55rem;
+  width: 100%;
+}
+
+.field-chat-input {
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.field-chat-input textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.55rem;
+  width: 100%;
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+.chat-messages {
+  flex: 1 1 auto;
+  min-height: 8rem;
+  max-height: min(38vh, 320px);
+  overflow: auto;
+  padding: 0.65rem 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.88rem;
+}
+
+.chat-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.chat-bubble {
+  margin-bottom: 0.65rem;
+}
+
+.chat-bubble:last-child {
+  margin-bottom: 0;
+}
+
+.chat-bubble__label {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+
+.chat-bubble__text {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chat-bubble--user .chat-bubble__text {
+  color: color-mix(in srgb, var(--accent) 85%, var(--text));
+}
+
+.chat-actions {
+  margin-top: 0;
+  align-items: center;
+}
+
+.chat-status {
+  margin-top: 0;
+  font-size: 0.82rem;
+}

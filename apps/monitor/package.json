@@ -1,5 +1,5 @@
 {
-  "name": "spark-sglang-monitor",
+  "name": "spark-sglang-stack-dashboard",
   "private": true,
   "type": "module",
   "scripts": {

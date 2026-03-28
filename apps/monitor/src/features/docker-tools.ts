@@ -1,3 +1,7 @@
+/**
+ * Docker / tools: containers, whitelisted `tools/` scripts via `/api/probe`.
+ */
+
 type ContainerRow = {
   ID: string;
   Names: string;
@@ -164,7 +168,7 @@ async function runTool(): Promise<void> {
   }
 }
 
-export function initDockerStack(): void {
+export function initDockerTools(): void {
   btnRefresh?.addEventListener("click", () => void loadContainers());
   btnRun?.addEventListener("click", () => void runTool());
   void loadTools();
