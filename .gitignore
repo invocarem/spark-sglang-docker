@@ -4,3 +4,9 @@ dist/
 **/dist/
 .nimis/
 .monitor/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python

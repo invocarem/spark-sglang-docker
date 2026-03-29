@@ -3,6 +3,8 @@
  * `tools/` scripts via `/api/probe`. Tool list comes from `GET /api/tools` (see server `TOOLS`).
  */
 
+import { pickPreferredContainer } from "./container-preferences";
+
 type ContainerRow = {
   ID: string;
   Names: string;
@@ -18,7 +20,6 @@ type ToolInfo = {
   format: "json" | "text";
 };
 
-const DEFAULT_HINT = "sglang_node_tf5";
 const DEFAULT_TOOL_ID = "collect_env";
 /** Shown when `GET /api/tools` fails; ids must match `apps/monitor/server/docker.ts` `TOOLS`. */
 const FALLBACK_PROBE_TOOLS: readonly { id: string; text: string }[] = [
@@ -139,7 +140,7 @@ async function loadContainers(): Promise<void> {
       opt.textContent = `${name} — ${row.Image}`;
       sel.appendChild(opt);
     }
-    const preferred = rows.map((r) => stripSlashName(r.Names)).find((n) => n === DEFAULT_HINT);
+    const preferred = pickPreferredContainer(rows);
     if (preferred) sel.value = preferred;
     setDockerStatus(`Loaded ${rows.length} container(s).`);
   } catch (e) {

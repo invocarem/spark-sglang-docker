@@ -4,15 +4,13 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import {
   assertSafeContainerName,
   dockerExec,
   dockerExecDetached,
 } from "./docker.js";
 import { fetchInferenceModelIds } from "./sglang.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { findRepoRoot } from "./repo-root.js";
 
 /** Path inside the container (see repo README: bind mount at `/workspace`). */
 export const CONTAINER_SCRIPTS_DIR = "/workspace/scripts";
@@ -29,21 +27,6 @@ const LAUNCH_LOG_TAIL_LINES = Math.min(
 );
 
 const BASENAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\.sh$/;
-
-function findRepoRoot(): string {
-  const env = process.env.MONITOR_REPO_ROOT?.trim();
-  if (env) return path.resolve(env);
-  for (let depth = 3; depth <= 6; depth++) {
-    const root = path.resolve(__dirname, ...Array<string>(depth).fill(".."));
-    const scripts = path.join(root, "scripts");
-    try {
-      if (fs.statSync(scripts).isDirectory()) return root;
-    } catch {
-      /* try next depth */
-    }
-  }
-  return path.resolve(__dirname, "..", "..", "..");
-}
 
 export function listLaunchScripts(): { id: string; label: string; pathInContainer: string }[] {
   const scriptsDir = path.join(findRepoRoot(), "scripts");

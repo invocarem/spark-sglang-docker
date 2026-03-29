@@ -24,6 +24,7 @@ import {
   runLaunchScriptInContainer,
   stopLaunchServerInContainer,
 } from "./launch-scripts.js";
+import { STACK_PRESETS, runStackPreset, stopStackContainer } from "./stack-run.js";
 
 const app = new Hono();
 
@@ -55,6 +56,74 @@ app.get("/api/containers", async (c) => {
     const message = e instanceof Error ? e.message : String(e);
     return c.json({ error: message }, 500);
   }
+});
+
+app.get("/api/stack/presets", (c) =>
+  c.json({
+    presets: STACK_PRESETS.map((p) => ({
+      id: p.id,
+      label: p.label,
+      containerName: p.containerName,
+      image: p.image,
+    })),
+  }),
+);
+
+app.post("/api/stack/run", async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+  if (typeof body !== "object" || body === null) {
+    return c.json({ error: "Expected JSON object" }, 400);
+  }
+  const preset = typeof (body as Record<string, unknown>).preset === "string"
+    ? (body as Record<string, string>).preset.trim()
+    : "";
+  if (!preset) {
+    return c.json({ error: "Missing preset" }, 400);
+  }
+  const result = await runStackPreset(preset);
+  if (!result.ok) {
+    return c.json(
+      { error: result.error, stderr: result.stderr },
+      /already in use|port is already allocated|Conflict/i.test(result.error ?? "")
+        ? 409
+        : 400,
+    );
+  }
+  return c.json({
+    ok: true,
+    container: result.container,
+    started: result.started,
+    message: result.message,
+  });
+});
+
+app.post("/api/stack/stop", async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+  if (typeof body !== "object" || body === null) {
+    return c.json({ error: "Expected JSON object" }, 400);
+  }
+  const container =
+    typeof (body as Record<string, unknown>).container === "string"
+      ? (body as Record<string, string>).container.trim()
+      : "";
+  if (!container) {
+    return c.json({ error: "Missing container" }, 400);
+  }
+  const result = await stopStackContainer(container);
+  if (!result.ok) {
+    return c.json({ error: result.error, stderr: result.stderr }, 400);
+  }
+  return c.json({ ok: true, message: result.message });
 });
 
 app.get("/api/probe", async (c) => {

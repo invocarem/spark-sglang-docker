@@ -3,20 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SGLang Stack Dashboard</title>
+    <title>SGLang Stack Monitor</title>
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
     <div class="layout">
       <header class="header">
-        <h1>SGLang Stack Dashboard</h1>
+        <h1>SGLang Stack Monitor</h1>
         <details class="header-help">
-          <summary>About this dashboard</summary>
+          <summary>About this monitor</summary>
           <p class="lede">
-            <strong>Launch</strong> starts SGLang from <code>scripts/*.sh</code>, detects
-            <code>launch_server</code>, and resolves the served model id. Set the
-            <strong>model id</strong> for Chat/Benchmark; other tabs: Logs, Docker tools, metrics,
-            benchmark, chat.
+            <strong>Container</strong> runs the stack image on the host (<code>docker run</code> / start /
+            stop). <strong>Launch</strong> runs <code>scripts/*.sh</code> inside that container to start
+            <code>sglang.launch_server</code>. Set the <strong>model id</strong> for Chat/Benchmark; other
+            tabs: Logs, Docker tools, metrics, benchmark, chat.
           </p>
         </details>
       </header>
@@ -24,7 +24,17 @@
       <div class="shell">
         <div class="shell-main">
       <nav class="tabs" role="tablist" aria-label="Main tools">
-        <button type="button" role="tab" id="tab-launch" aria-selected="true" aria-controls="panel-launch" data-tab="launch">
+        <button
+          type="button"
+          role="tab"
+          id="tab-container"
+          aria-selected="true"
+          aria-controls="panel-container"
+          data-tab="container"
+        >
+          Container
+        </button>
+        <button type="button" role="tab" id="tab-launch" aria-selected="false" aria-controls="panel-launch" data-tab="launch">
           Launch
         </button>
         <button type="button" role="tab" id="tab-logs" aria-selected="false" aria-controls="panel-logs" data-tab="logs">
@@ -42,18 +52,66 @@
       </nav>
 
       <div
+        id="panel-container"
+        role="tabpanel"
+        aria-labelledby="tab-container"
+        class="tab-panel container-panel"
+        data-panel="container"
+      >
+        <section class="panel panel-nested">
+          <h2>Stack container (host Docker)</h2>
+          <p class="launch-lead">
+            Create or start a dev container on the host (same idea as <code>./run-docker.sh</code> and
+            <code>./run-sglang.sh</code>): GPU, shm, port <code>8000</code>, HF cache and this repo
+            mounted at <code>/workspace</code>. The process keeps the container alive
+            (<code>sleep infinity</code>) so the <strong>Launch</strong> tab can
+            <code>docker exec</code> your <code>scripts/*.sh</code>. Presets share host port
+            <code>8000</code> by default—only one can run at a time unless you change
+            <code>MONITOR_STACK_HOST_PORT</code>.
+          </p>
+          <details class="launch-more">
+            <summary>Env / paths</summary>
+            <p>
+              API runs on the host; set <code>HF_TOKEN</code> if needed. Repo root for
+              <code>-v …:/workspace</code> is <code>MONITOR_REPO_ROOT</code> or auto-detected. Host port:
+              <code>MONITOR_STACK_HOST_PORT</code> (default <code>8000</code>) maps to container
+              <code>8000</code>.
+            </p>
+          </details>
+          <div class="launch-fields">
+            <label class="field field-grow">
+              <span>Preset image</span>
+              <select id="sel-stack-preset" aria-label="Stack container preset"></select>
+            </label>
+          </div>
+          <div class="launch-toolbar">
+            <div class="launch-toolbar__main">
+              <button type="button" id="btn-stack-refresh" class="btn">Refresh status</button>
+            </div>
+            <div class="launch-toolbar__run row">
+              <button type="button" id="btn-stack-run" class="btn primary">Run / start container</button>
+              <button type="button" id="btn-stack-stop" class="btn">Stop container</button>
+            </div>
+          </div>
+          <p id="status-stack" class="status" aria-live="polite"></p>
+        </section>
+      </div>
+
+      <div
         id="panel-launch"
         role="tabpanel"
         aria-labelledby="tab-launch"
-        class="tab-panel launch-panel"
+        class="tab-panel launch-panel hidden"
         data-panel="launch"
+        hidden
       >
         <section class="panel panel-nested">
-          <h2>Start SGLang</h2>
+          <h2>Launch SGLang (<code>launch_server</code>)</h2>
           <p class="launch-lead">
-            Pick a container and a script from <code>./scripts</code>, then run or check status.
-            While <code>launch_server</code> is running, starting again is blocked. Script output while
-            the model loads is on the <strong>Logs</strong> tab (launch script log).
+            After a stack container is running, pick it here and run a script from <code>./scripts</code>
+            to start the LLM with <code>python3 -m sglang.launch_server</code>. While the server is
+            running, starting again is blocked. Script output while the model loads is on the
+            <strong>Logs</strong> tab (launch script log).
           </p>
           <details class="launch-more">
             <summary>How it works</summary>

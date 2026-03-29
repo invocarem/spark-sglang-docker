@@ -1,0 +1,195 @@
+/**
+ * Container tab: start/stop whitelisted stack images on the host (`docker run` / `docker start` / `docker stop`),
+ * matching repo `run-docker.sh` and `run-sglang.sh`. After the container is up, use the Launch tab for
+ * `sglang.launch_server` via ./scripts.
+ */
+
+type StackPreset = {
+  id: string;
+  label: string;
+  containerName: string;
+  image: string;
+};
+
+type ContainerRow = {
+  Names: string;
+  Image: string;
+  State: string;
+};
+
+const selPreset = document.querySelector<HTMLSelectElement>("#sel-stack-preset");
+const btnRun = document.querySelector<HTMLButtonElement>("#btn-stack-run");
+const btnStop = document.querySelector<HTMLButtonElement>("#btn-stack-stop");
+const btnRefresh = document.querySelector<HTMLButtonElement>("#btn-stack-refresh");
+const statusEl = document.querySelector<HTMLParagraphElement>("#status-stack");
+
+let presets: StackPreset[] = [];
+
+function stripSlashName(names: string): string {
+  const n = names.trim().split(/\s+/)[0] ?? "";
+  return n.startsWith("/") ? n.slice(1) : n;
+}
+
+function selectedPreset(): StackPreset | undefined {
+  const id = selPreset?.value.trim();
+  if (!id) return undefined;
+  return presets.find((p) => p.id === id);
+}
+
+function setStatus(message: string, isError = false): void {
+  if (!statusEl) return;
+  statusEl.textContent = message;
+  statusEl.classList.toggle("error", isError);
+}
+
+function setToolbarBusy(busy: boolean): void {
+  if (btnRun) btnRun.disabled = busy;
+  if (btnStop) btnStop.disabled = busy;
+  if (btnRefresh) btnRefresh.disabled = busy;
+}
+
+async function loadPresets(): Promise<void> {
+  if (!selPreset) return;
+  try {
+    const res = await fetch("/api/stack/presets");
+    const body = (await res.json()) as { presets?: StackPreset[]; error?: string };
+    if (!res.ok) {
+      selPreset.innerHTML = "";
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = body.error ?? "Failed to load presets";
+      selPreset.appendChild(opt);
+      setStatus(body.error ?? "Could not load stack presets.", true);
+      return;
+    }
+    presets = body.presets ?? [];
+    selPreset.innerHTML = "";
+    if (presets.length === 0) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "(no presets)";
+      selPreset.appendChild(opt);
+      setStatus("No stack presets configured on the server.");
+      return;
+    }
+    for (const p of presets) {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = `${p.label} (${p.containerName})`;
+      selPreset.appendChild(opt);
+    }
+    setStatus("Pick a preset, then run or start the container on the host.");
+  } catch (e) {
+    selPreset.innerHTML = "";
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "(error)";
+    selPreset.appendChild(opt);
+    setStatus(e instanceof Error ? e.message : String(e), true);
+  }
+}
+
+async function refreshStatus(): Promise<void> {
+  const p = selectedPreset();
+  if (!p) {
+    setStatus("Select a preset.", true);
+    return;
+  }
+  try {
+    const res = await fetch("/api/containers");
+    const body = (await res.json()) as { containers?: ContainerRow[]; error?: string };
+    if (!res.ok) {
+      setStatus(body.error ?? `Could not list containers (${res.status}).`, true);
+      return;
+    }
+    const rows = body.containers ?? [];
+    const row = rows.find((r) => stripSlashName(r.Names) === p.containerName);
+    if (row) {
+      setStatus(
+        `Running — ${p.containerName} (${row.Image}), state: ${row.State}. Open the Launch tab to run a script inside it.`,
+      );
+    } else {
+      setStatus(
+        `Not running — ${p.containerName} is not in docker ps. Use “Run / start container” to create or start it.`,
+      );
+    }
+  } catch (e) {
+    setStatus(e instanceof Error ? e.message : String(e), true);
+  }
+}
+
+async function runStack(): Promise<void> {
+  const p = selectedPreset();
+  if (!p) {
+    setStatus("Select a preset.", true);
+    return;
+  }
+  setToolbarBusy(true);
+  setStatus(`Starting ${p.containerName}…`);
+  try {
+    const res = await fetch("/api/stack/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ preset: p.id }),
+    });
+    const body = (await res.json()) as {
+      ok?: boolean;
+      message?: string;
+      error?: string;
+      stderr?: string;
+    };
+    if (!res.ok) {
+      const parts = [body.error ?? `HTTP ${res.status}`];
+      if (body.stderr) parts.push(body.stderr);
+      setStatus(parts.join(" — "), true);
+      return;
+    }
+    setStatus(body.message ?? "Started.");
+    await refreshStatus();
+  } catch (e) {
+    setStatus(e instanceof Error ? e.message : String(e), true);
+  } finally {
+    setToolbarBusy(false);
+  }
+}
+
+async function stopStack(): Promise<void> {
+  const p = selectedPreset();
+  if (!p) {
+    setStatus("Select a preset.", true);
+    return;
+  }
+  setToolbarBusy(true);
+  setStatus(`Stopping ${p.containerName}…`);
+  try {
+    const res = await fetch("/api/stack/stop", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ container: p.containerName }),
+    });
+    const body = (await res.json()) as { ok?: boolean; message?: string; error?: string; stderr?: string };
+    if (!res.ok) {
+      const parts = [body.error ?? `HTTP ${res.status}`];
+      if (body.stderr) parts.push(body.stderr);
+      setStatus(parts.join(" — "), true);
+      return;
+    }
+    setStatus(body.message ?? "Stopped.");
+    await refreshStatus();
+  } catch (e) {
+    setStatus(e instanceof Error ? e.message : String(e), true);
+  } finally {
+    setToolbarBusy(false);
+  }
+}
+
+export function initContainerStack(): void {
+  selPreset?.addEventListener("change", () => void refreshStatus());
+  btnRun?.addEventListener("click", () => void runStack());
+  btnStop?.addEventListener("click", () => void stopStack());
+  btnRefresh?.addEventListener("click", () => void refreshStatus());
+  void (async () => {
+    await loadPresets();
+    await refreshStatus();
+  })();
+}

@@ -3,6 +3,8 @@
  * (`/api/launch/log`). Read-only; complements Launch and Docker / tools.
  */
 
+import { pickPreferredContainer } from "./container-preferences";
+
 type ContainerRow = {
   ID: string;
   Names: string;
@@ -10,8 +12,6 @@ type ContainerRow = {
   State: string;
   Status: string;
 };
-
-const DEFAULT_CONTAINER_HINT = "sglang_node_tf5";
 const DOCKER_LOGS_TOOL = "docker_logs";
 
 const btnRefreshContainers = document.querySelector<HTMLButtonElement>("#btn-logs-refresh-containers");
@@ -155,7 +155,7 @@ async function loadContainers(): Promise<void> {
       opt.textContent = `${name} — ${row.Image}`;
       selContainer.appendChild(opt);
     }
-    const preferred = rows.map((r) => stripSlashName(r.Names)).find((n) => n === DEFAULT_CONTAINER_HINT);
+    const preferred = pickPreferredContainer(rows);
     if (preferred) selContainer.value = preferred;
     setStatus(`Loaded ${rows.length} container(s).`);
     void refreshLog({ quiet: true });

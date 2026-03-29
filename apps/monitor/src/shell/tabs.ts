@@ -1,6 +1,6 @@
-/** Tab strip for the main column: Launch, Logs, Docker / tools, SGLang metrics, Benchmark. */
+/** Tab strip for the main column: Container, Launch, Logs, Docker / tools, SGLang metrics, Benchmark. */
 
-export type ShellTabId = "launch" | "logs" | "docker" | "sglang" | "benchmark";
+export type ShellTabId = "container" | "launch" | "logs" | "docker" | "sglang" | "benchmark";
 
 export type ShellTabsOptions = {
   /** Fired when the user switches to the SGLang metrics tab (first load / refresh). */
@@ -13,11 +13,13 @@ export type ShellTabsOptions = {
 
 export function initShellTabs(options: ShellTabsOptions): void {
   const { onSglangTabSelect, onLogsTabSelect, onBenchmarkTabSelect } = options;
+  const tabContainer = document.querySelector<HTMLButtonElement>("#tab-container");
   const tabLaunch = document.querySelector<HTMLButtonElement>("#tab-launch");
   const tabLogs = document.querySelector<HTMLButtonElement>("#tab-logs");
   const tabDocker = document.querySelector<HTMLButtonElement>("#tab-docker");
   const tabSglang = document.querySelector<HTMLButtonElement>("#tab-sglang");
   const tabBenchmark = document.querySelector<HTMLButtonElement>("#tab-benchmark");
+  const panelContainer = document.querySelector<HTMLDivElement>("#panel-container");
   const panelLaunch = document.querySelector<HTMLDivElement>("#panel-launch");
   const panelLogs = document.querySelector<HTMLDivElement>("#panel-logs");
   const panelDocker = document.querySelector<HTMLDivElement>("#panel-docker");
@@ -25,24 +27,28 @@ export function initShellTabs(options: ShellTabsOptions): void {
   const panelBenchmark = document.querySelector<HTMLDivElement>("#panel-benchmark");
 
   function selectTab(which: ShellTabId): void {
+    const containerOn = which === "container";
     const launchOn = which === "launch";
     const logsOn = which === "logs";
     const dockerOn = which === "docker";
     const sglangOn = which === "sglang";
     const benchmarkOn = which === "benchmark";
 
+    tabContainer?.setAttribute("aria-selected", containerOn ? "true" : "false");
     tabLaunch?.setAttribute("aria-selected", launchOn ? "true" : "false");
     tabLogs?.setAttribute("aria-selected", logsOn ? "true" : "false");
     tabDocker?.setAttribute("aria-selected", dockerOn ? "true" : "false");
     tabSglang?.setAttribute("aria-selected", sglangOn ? "true" : "false");
     tabBenchmark?.setAttribute("aria-selected", benchmarkOn ? "true" : "false");
 
+    panelContainer?.classList.toggle("hidden", !containerOn);
     panelLaunch?.classList.toggle("hidden", !launchOn);
     panelLogs?.classList.toggle("hidden", !logsOn);
     panelDocker?.classList.toggle("hidden", !dockerOn);
     panelSglang?.classList.toggle("hidden", !sglangOn);
     panelBenchmark?.classList.toggle("hidden", !benchmarkOn);
 
+    if (panelContainer) panelContainer.hidden = !containerOn;
     if (panelLaunch) panelLaunch.hidden = !launchOn;
     if (panelLogs) panelLogs.hidden = !logsOn;
     if (panelDocker) panelDocker.hidden = !dockerOn;
@@ -60,11 +66,12 @@ export function initShellTabs(options: ShellTabsOptions): void {
     }
   }
 
+  tabContainer?.addEventListener("click", () => selectTab("container"));
   tabLaunch?.addEventListener("click", () => selectTab("launch"));
   tabLogs?.addEventListener("click", () => selectTab("logs"));
   tabDocker?.addEventListener("click", () => selectTab("docker"));
   tabSglang?.addEventListener("click", () => selectTab("sglang"));
   tabBenchmark?.addEventListener("click", () => selectTab("benchmark"));
 
-  selectTab("launch");
+  selectTab("container");
 }

@@ -14,6 +14,11 @@ export type DockerResult = {
   stderr: string;
 };
 
+/** Run `docker …` on the host (stack containers, probes, etc.). */
+export function dockerHost(args: string[]): Promise<DockerResult> {
+  return runDocker(args);
+}
+
 function runDocker(args: string[]): Promise<DockerResult> {
   return new Promise((resolve, reject) => {
     const child = spawn("docker", args, {
@@ -139,6 +144,24 @@ export const TOOLS: readonly ToolMeta[] = [
     runner: "python3",
   },
   {
+    id: "benchmark",
+    label: "benchmark.py",
+    description:
+      "Runs `python3 -m sglang.bench_serving` (sets HF --model + --served-model-name; BENCHMARK_TOKENIZER default Qwen2.5-0.5B-Instruct)",
+    format: "text",
+    path: `${WORKSPACE_TOOLS}/benchmark.py`,
+    runner: "python3",
+  },
+  {
+    id: "task_benchmark",
+    label: "task_benchmark.py",
+    description:
+      "Chat task pass-rate benchmark (JSONL + checkers); default input task_benchmark_seed.jsonl — TASK_BENCH_MODEL / TASK_BENCH_INPUT",
+    format: "json",
+    path: `${WORKSPACE_TOOLS}/task_benchmark.py`,
+    runner: "python3",
+  },
+  {
     id: "hf_env",
     label: "hf_env.py",
     description: "Hugging Face env as JSON (token masked)",
@@ -164,13 +187,26 @@ export function getToolMeta(id: string): ToolMeta | undefined {
   return TOOL_BY_ID.get(id);
 }
 
+/** True when `docker exec … python3` failed because `python3` is not in the container PATH. */
+function looksLikePython3Missing(result: DockerResult): boolean {
+  if (result.code !== 127) return false;
+  const msg = `${result.stderr}\n${result.stdout}`.toLowerCase();
+  return (
+    msg.includes("python3") &&
+    (msg.includes("not found") || msg.includes("executable file not found"))
+  );
+}
+
 async function execPythonScript(
   container: string,
   scriptPath: string,
 ): Promise<DockerResult> {
   const try3 = await runDocker(["exec", container, "python3", scriptPath]);
   if (try3.code === 0) return try3;
-  return runDocker(["exec", container, "python", scriptPath]);
+  if (looksLikePython3Missing(try3)) {
+    return runDocker(["exec", container, "python", scriptPath]);
+  }
+  return try3;
 }
 
 async function execBashScript(

@@ -4,6 +4,7 @@
  */
 
 import { getPreferredModel, setPreferredModel } from "../sglang/model-prefs";
+import { pickPreferredContainer } from "./container-preferences";
 
 type ContainerRow = {
   ID: string;
@@ -18,8 +19,6 @@ type LaunchScriptInfo = {
   label: string;
   pathInContainer: string;
 };
-
-const DEFAULT_CONTAINER_HINT = "sglang_node_tf5";
 
 const btnRefresh = document.querySelector<HTMLButtonElement>("#btn-launch-refresh-containers");
 const btnCheck = document.querySelector<HTMLButtonElement>("#btn-launch-check-server");
@@ -265,7 +264,7 @@ async function loadContainers(): Promise<void> {
       opt.textContent = `${name} — ${row.Image}`;
       selContainer.appendChild(opt);
     }
-    const preferred = rows.map((r) => stripSlashName(r.Names)).find((n) => n === DEFAULT_CONTAINER_HINT);
+    const preferred = pickPreferredContainer(rows);
     if (preferred) selContainer.value = preferred;
     setScriptStatus(`Loaded ${rows.length} container(s).`);
     await refreshLaunchStatus();
