@@ -10,12 +10,15 @@
     <div class="layout">
       <header class="header">
         <h1>SGLang Stack Dashboard</h1>
-        <p class="lede">
-          <strong>Launch</strong> starts SGLang from <code>scripts/*.sh</code>, detects
-          <code>launch_server</code>, and resolves the served model id. Set the
-          <strong>model id</strong> for Chat/Benchmark; other tabs: Logs, Docker tools, metrics,
-          benchmark, chat.
-        </p>
+        <details class="header-help">
+          <summary>About this dashboard</summary>
+          <p class="lede">
+            <strong>Launch</strong> starts SGLang from <code>scripts/*.sh</code>, detects
+            <code>launch_server</code>, and resolves the served model id. Set the
+            <strong>model id</strong> for Chat/Benchmark; other tabs: Logs, Docker tools, metrics,
+            benchmark, chat.
+          </p>
+        </details>
       </header>
 
       <div class="shell">
@@ -85,7 +88,7 @@
                 type="button"
                 id="btn-launch-stop-server"
                 class="btn"
-                title="Send SIGTERM, then SIGKILL if needed, to processes matching sglang.launch_server"
+                title="Send SIGTERM, then SIGKILL if needed, to processes matching python3 -m sglang.launch_server"
               >
                 Stop launch server
               </button>

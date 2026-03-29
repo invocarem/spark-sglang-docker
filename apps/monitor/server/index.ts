@@ -90,7 +90,7 @@ app.get("/api/probe", async (c) => {
   if (code !== 0) {
     return c.json(
       {
-        error: "docker exec failed",
+        error: "Docker command failed",
         tool: toolParam,
         exitCode: code,
         stderr: stderr.trim(),

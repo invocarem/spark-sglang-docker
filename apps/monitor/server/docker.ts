@@ -94,7 +94,16 @@ export type DockerLogsToolMeta = {
   tailLines: number;
 };
 
-export type ToolMeta = ExecToolMeta | DockerLogsToolMeta;
+/** Host `docker image inspect` labels for the image this container was created from (OCI LABEL from image build). */
+export type DockerInspectToolMeta = {
+  id: string;
+  label: string;
+  description: string;
+  format: "json";
+  kind: "docker_inspect";
+};
+
+export type ToolMeta = ExecToolMeta | DockerLogsToolMeta | DockerInspectToolMeta;
 
 export const TOOLS: readonly ToolMeta[] = [
   {
@@ -104,6 +113,14 @@ export const TOOLS: readonly ToolMeta[] = [
     format: "text",
     kind: "docker_logs",
     tailLines: DOCKER_LOGS_TAIL_LINES,
+  },
+  {
+    id: "docker_inspect",
+    label: "docker inspect (image labels)",
+    description:
+      "Host: labels from the container's image (e.g. dev.scitrera.sglang_version — use when pip reports sglang as 0.0.0)",
+    format: "json",
+    kind: "docker_inspect",
   },
   {
     id: "collect_env",
@@ -163,6 +180,17 @@ async function execBashScript(
   return runDocker(["exec", container, "bash", scriptPath]);
 }
 
+/** Image OCI labels (not copied to container Config.Labels); resolve image ID from the running container first. */
+async function dockerInspectImageLabels(container: string): Promise<DockerResult> {
+  const idRes = await runDocker(["inspect", container, "--format", "{{.Image}}"]);
+  if (idRes.code !== 0) return idRes;
+  const imageId = idRes.stdout.trim();
+  if (!imageId) {
+    return { code: 1, stdout: "", stderr: "Could not resolve image id for container" };
+  }
+  return runDocker(["image", "inspect", imageId, "--format", "{{json .Config.Labels}}"]);
+}
+
 /** Run a command in the container in detached mode (returns immediately; use for long-running processes). */
 export async function dockerExecDetached(
   container: string,
@@ -192,6 +220,9 @@ export async function runToolInContainer(
   }
   if ("kind" in meta && meta.kind === "docker_logs") {
     return runDocker(["logs", "--tail", String(meta.tailLines), container]);
+  }
+  if ("kind" in meta && meta.kind === "docker_inspect") {
+    return dockerInspectImageLabels(container);
   }
   const execMeta = meta as ExecToolMeta;
   if (execMeta.runner === "bash") {

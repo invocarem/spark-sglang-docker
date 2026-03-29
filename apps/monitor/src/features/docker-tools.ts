@@ -1,5 +1,6 @@
 /**
- * Docker / tools: containers, whitelisted `tools/` scripts via `/api/probe`.
+ * Docker / tools: host `docker logs` / `docker inspect` (image labels) and whitelisted
+ * `tools/` scripts via `/api/probe`. Tool list comes from `GET /api/tools` (see server `TOOLS`).
  */
 
 type ContainerRow = {
@@ -19,6 +20,14 @@ type ToolInfo = {
 
 const DEFAULT_HINT = "sglang_node_tf5";
 const DEFAULT_TOOL_ID = "collect_env";
+/** Shown when `GET /api/tools` fails; ids must match `apps/monitor/server/docker.ts` `TOOLS`. */
+const FALLBACK_PROBE_TOOLS: readonly { id: string; text: string }[] = [
+  { id: DEFAULT_TOOL_ID, text: "collect_env.py — Full stack JSON" },
+  {
+    id: "docker_inspect",
+    text: "docker inspect (image labels) — OCI labels (e.g. dev.scitrera.sglang_version)",
+  },
+];
 
 const sel = document.querySelector<HTMLSelectElement>("#sel-container");
 const selTool = document.querySelector<HTMLSelectElement>("#sel-tool");
@@ -70,10 +79,12 @@ async function loadTools(): Promise<void> {
     const body = (await res.json()) as { tools?: ToolInfo[]; error?: string };
     if (!res.ok) {
       selTool.innerHTML = "";
-      const opt = document.createElement("option");
-      opt.value = DEFAULT_TOOL_ID;
-      opt.textContent = `Fallback: ${DEFAULT_TOOL_ID}`;
-      selTool.appendChild(opt);
+      for (const t of FALLBACK_PROBE_TOOLS) {
+        const opt = document.createElement("option");
+        opt.value = t.id;
+        opt.textContent = `Fallback: ${t.text}`;
+        selTool.appendChild(opt);
+      }
       return;
     }
     const tools = body.tools ?? [];
@@ -88,10 +99,12 @@ async function loadTools(): Promise<void> {
     if (hasDefault) selTool.value = DEFAULT_TOOL_ID;
   } catch {
     selTool.innerHTML = "";
-    const opt = document.createElement("option");
-    opt.value = DEFAULT_TOOL_ID;
-    opt.textContent = DEFAULT_TOOL_ID;
-    selTool.appendChild(opt);
+    for (const t of FALLBACK_PROBE_TOOLS) {
+      const opt = document.createElement("option");
+      opt.value = t.id;
+      opt.textContent = t.text;
+      selTool.appendChild(opt);
+    }
   }
 }
 
