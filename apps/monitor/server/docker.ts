@@ -124,12 +124,24 @@ export type GpuLiveToolMeta = {
   kind: "gpu_live";
 };
 
+/** Detached `bash SCRIPT` with output appended to LOG (for long-running servers). */
+export type DetachedBashLoggedToolMeta = {
+  id: string;
+  label: string;
+  description: string;
+  format: "text";
+  kind: "detached_bash_logged";
+  scriptPath: string;
+  logPath: string;
+};
+
 export type ToolMeta =
   | ExecToolMeta
   | DockerLogsToolMeta
   | DockerInspectToolMeta
   | ContainerStatsToolMeta
-  | GpuLiveToolMeta;
+  | GpuLiveToolMeta
+  | DetachedBashLoggedToolMeta;
 
 export const TOOLS: readonly ToolMeta[] = [
   {
@@ -213,6 +225,16 @@ export const TOOLS: readonly ToolMeta[] = [
     format: "text",
     path: `${WORKSPACE_TOOLS}/cuda_env.sh`,
     runner: "bash",
+  },
+  {
+    id: "vllm_launch_serve",
+    label: "vLLM: launch serve.sh (detached)",
+    description:
+      "docker exec -d: runs repo scripts/vllm/serve.sh; stdout/stderr → /workspace/.monitor/vllm-launch.log (requires idle stack, PID1 sleep)",
+    format: "text",
+    kind: "detached_bash_logged",
+    scriptPath: "/workspace/scripts/vllm/serve.sh",
+    logPath: "/workspace/.monitor/vllm-launch.log",
   },
 ] as const;
 
@@ -348,6 +370,31 @@ export async function runToolInContainer(
   }
   if ("kind" in meta && meta.kind === "gpu_live") {
     return dockerGpuLive(container);
+  }
+  if ("kind" in meta && meta.kind === "detached_bash_logged") {
+    const m = meta as DetachedBashLoggedToolMeta;
+    const launchCommand = `bash ${m.scriptPath}`;
+    const runScript =
+      `(command -v script >/dev/null 2>&1 && script -qefc '${launchCommand}' - || sh -c '${launchCommand}') >> ${m.logPath} 2>&1`;
+    const shellCmd = [
+      "mkdir -p /workspace/.monitor",
+      `printf '%s\\n' "---- $(date -u +%Y-%m-%dT%H:%M:%SZ) ${m.id} ----" >> ${m.logPath}`,
+      runScript,
+    ].join(" && ");
+    const r = await dockerExecDetached(container, ["sh", "-c", shellCmd]);
+    if (r.code !== 0) {
+      return r;
+    }
+    return {
+      code: 0,
+      stdout: [
+        "Detached launch requested (returns immediately).",
+        `Script: ${m.scriptPath}`,
+        `Log: ${m.logPath}`,
+        "Tail inside container: tail -f /workspace/.monitor/vllm-launch.log",
+      ].join("\n"),
+      stderr: r.stderr,
+    };
   }
   const execMeta = meta as ExecToolMeta;
   if (execMeta.runner === "bash") {

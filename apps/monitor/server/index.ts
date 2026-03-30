@@ -17,6 +17,14 @@ import {
   getSglangMetricsUrl,
   runSglangBenchmark,
 } from "./sglang.js";
+import { fetchVllmMetrics, getVllmBaseUrl, getVllmMetricsUrl } from "./vllm.js";
+import {
+  getVllmTestStackLogs,
+  getVllmTestStackMeta,
+  getVllmTestStackStatus,
+  runVllmTestStack,
+  stopVllmTestStack,
+} from "./vllm-stack.js";
 import {
   getLaunchLogTail,
   getLaunchServerStatus,
@@ -249,6 +257,80 @@ app.get("/api/sglang/metrics", async (c) => {
     return c.json(result, 502);
   }
   return c.json(result);
+});
+
+app.get("/api/vllm/config", (c) => {
+  try {
+    const metricsUrl = getVllmMetricsUrl();
+    const inferenceBaseUrl = getVllmBaseUrl();
+    const u = new URL(metricsUrl);
+    const meta = getVllmTestStackMeta();
+    return c.json({
+      metricsUrl,
+      inferenceBaseUrl,
+      host: u.host,
+      ...meta,
+      hint:
+        "vLLM test page (`/vllm.html`): idle container + Tools → launch serve.sh. Edit repo `scripts/vllm/serve.sh`. Monitor env: MONITOR_VLLM_TF5_IMAGE, MONITOR_STACK_HOST_PORT, HF_TOKEN.",
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return c.json({ error: message }, 400);
+  }
+});
+
+app.get("/api/vllm/metrics", async (c) => {
+  const result = await fetchVllmMetrics();
+  if (!result.ok) {
+    return c.json(result, 502);
+  }
+  return c.json(result);
+});
+
+app.get("/api/vllm/stack/status", async (c) => {
+  const s = await getVllmTestStackStatus();
+  if (!s.ok) {
+    return c.json({ error: s.error }, 500);
+  }
+  return c.json(s);
+});
+
+app.post("/api/vllm/stack/run", async (c) => {
+  const result = await runVllmTestStack();
+  if (!result.ok) {
+    return c.json(
+      { error: result.error, stderr: result.stderr },
+      /already in use|port is already allocated|Conflict/i.test(result.error ?? "")
+        ? 409
+        : 400,
+    );
+  }
+  return c.json({
+    ok: true,
+    container: result.container,
+    started: result.started,
+    message: result.message,
+  });
+});
+
+app.post("/api/vllm/stack/stop", async (c) => {
+  const result = await stopVllmTestStack();
+  if (!result.ok) {
+    return c.json({ error: result.error, stderr: result.stderr }, 400);
+  }
+  return c.json({ ok: true, message: result.message });
+});
+
+app.get("/api/vllm/stack/logs", async (c) => {
+  const linesParam = c.req.query("lines")?.trim() ?? "400";
+  const parsed = Number(linesParam);
+  const lines =
+    linesParam && Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : 400;
+  const result = await getVllmTestStackLogs(lines);
+  if (!result.ok) {
+    return c.json({ error: result.error, stderr: result.stderr, text: null }, 502);
+  }
+  return c.json({ ok: true, text: result.text });
 });
 
 app.post("/api/sglang/benchmark", async (c) => {

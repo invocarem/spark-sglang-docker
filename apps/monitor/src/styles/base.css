@@ -56,6 +56,20 @@ body {
   min-width: 0;
 }
 
+.shell.shell--vllm {
+  grid-template-columns: 1fr;
+}
+
+.shell-main--full {
+  max-width: 100%;
+}
+
+.panel-subhead {
+  font-size: 1rem;
+  font-weight: 650;
+  margin: 1rem 0 0.35rem;
+}
+
 @media (max-width: 960px) {
   .shell {
     grid-template-columns: 1fr;

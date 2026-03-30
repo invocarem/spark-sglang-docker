@@ -4,6 +4,8 @@
  * `containers/run-docker-openai.sh` (GPU, shm, port, mounts, env, image, name).
  * The monitor uses `docker run -d` with `sleep infinity` instead of `-it … bash` so
  * the process works without a TTY and the Launch tab can `docker exec`.
+ *
+ * vLLM testing lives on a separate page; see `vllm-stack.ts`.
  */
 
 import os from "node:os";
