@@ -343,7 +343,7 @@ export async function runLaunchScriptInContainer(
   const launchCommand =
     overriddenScriptB64 === null
       ? `bash ${inContainer}`
-      : `tmp="/tmp/monitor-launch-${scriptBasename}-$$.sh"; printf '%s' '${overriddenScriptB64}' | base64 -d > "$tmp" && chmod +x "$tmp" && bash "$tmp"; rc=$?; rm -f "$tmp"; exit $rc`;
+      : `tmp="/workspace/.monitor/monitor-launch-${scriptBasename}.rendered.sh"; printf '%s' '${overriddenScriptB64}' | base64 -d > "$tmp" && chmod +x "$tmp" && bash "$tmp"; exit $?`;
   const runScript =
     `(command -v script >/dev/null 2>&1 && script -qefc '${launchCommand}' - || sh -c '${launchCommand}') >> ${logPath} 2>&1`;
   const shellCmd = [
