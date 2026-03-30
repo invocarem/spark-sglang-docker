@@ -311,23 +311,39 @@ export async function runLaunchScriptInContainer(
   ) {
     return { ok: false, error: "Invalid argOverrides format" };
   }
+  const scriptsDir = path.join(findRepoRoot(), "scripts");
+  const hostScriptPath = path.join(scriptsDir, scriptBasename);
+  let overriddenScriptB64: string | null = null;
+  if (argOverrides && argOverrides.length > 0) {
+    let original = "";
+    try {
+      original = fs.readFileSync(hostScriptPath, "utf8");
+    } catch {
+      return { ok: false, error: "Could not read script for override" };
+    }
+    const lines = original.split(/\r?\n/);
+    const byKey = new Map(argOverrides.map((a) => [a.key, a]));
+    const updated = lines.flatMap((rawLine) => {
+      const m = rawLine.match(/^(\s*)(--[A-Za-z0-9][A-Za-z0-9-]*)(?:\s+.*)?$/);
+      if (!m) return [rawLine];
+      const key = m[2] ?? "";
+      const ov = byKey.get(key);
+      if (!ov) return [rawLine];
+      if (!ov.enabled) return [];
+      const indent = m[1] ?? "";
+      const hasSlash = rawLine.trimEnd().endsWith("\\");
+      return [`${indent}${ov.key} ${ov.value}${hasSlash ? " \\" : ""}`];
+    });
+    overriddenScriptB64 = Buffer.from(`${updated.join("\n")}\n`, "utf8").toString("base64");
+  }
   /**
    * Detached `docker exec` has no TTY; many loaders disable or break progress bars without one.
    * `script -qefc` (util-linux) allocates a pseudo-terminal when available; fall back to plain bash.
    */
-  const sedParts =
-    argOverrides?.map((a) => {
-      const escapedKey = a.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      if (!a.enabled) {
-        return `-e "/^[[:space:]]*${escapedKey}\\b[[:space:]]*/d"`;
-      }
-      const escapedValue = a.value.replace(/\\/g, "\\\\").replace(/&/g, "\\&").replace(/"/g, '\\"');
-      return `-e "s|^[[:space:]]*${escapedKey}\\b.*$|    ${a.key} ${escapedValue} \\\\|"`;
-    }) ?? [];
   const launchCommand =
-    sedParts.length === 0
+    overriddenScriptB64 === null
       ? `bash ${inContainer}`
-      : `tmp="/tmp/monitor-launch-${scriptBasename}-$$.sh"; sed -E ${sedParts.join(" ")} "${inContainer}" > "$tmp" && chmod +x "$tmp" && bash "$tmp"; rc=$?; rm -f "$tmp"; exit $rc`;
+      : `tmp="/tmp/monitor-launch-${scriptBasename}-$$.sh"; printf '%s' '${overriddenScriptB64}' | base64 -d > "$tmp" && chmod +x "$tmp" && bash "$tmp"; rc=$?; rm -f "$tmp"; exit $rc`;
   const runScript =
     `(command -v script >/dev/null 2>&1 && script -qefc '${launchCommand}' - || sh -c '${launchCommand}') >> ${logPath} 2>&1`;
   const shellCmd = [
