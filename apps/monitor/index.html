@@ -1,393 +1,346 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SGLang Stack Monitor</title>
-    <link rel="stylesheet" href="/src/styles.css" />
-  </head>
-  <body>
-    <div class="layout">
-      <header class="header">
-        <h1>SGLang Stack Monitor</h1>
-        <details class="header-help">
-          <summary>About this monitor</summary>
-          <p class="lede">
-            <strong>Container</strong> runs the stack image on the host (<code>docker run</code> / start /
-            stop). <strong>Launch</strong> runs <code>scripts/*.sh</code> inside that container to start
-            <code>sglang.launch_server</code>. Set the <strong>model id</strong> for Chat/Benchmark; other
-            tabs: Logs, Tools, metrics, benchmark, chat.
-          </p>
-        </details>
-      </header>
 
-      <div class="shell">
-        <div class="shell-main">
-      <nav class="tabs" role="tablist" aria-label="Main tools">
-        <button
-          type="button"
-          role="tab"
-          id="tab-container"
-          aria-selected="true"
-          aria-controls="panel-container"
-          data-tab="container"
-        >
-          Container
-        </button>
-        <button type="button" role="tab" id="tab-launch" aria-selected="false" aria-controls="panel-launch" data-tab="launch">
-          Launch
-        </button>
-        <button type="button" role="tab" id="tab-logs" aria-selected="false" aria-controls="panel-logs" data-tab="logs">
-          Logs
-        </button>
-        <button type="button" role="tab" id="tab-docker" aria-selected="false" aria-controls="panel-docker" data-tab="docker">
-          Tools
-        </button>
-        <button type="button" role="tab" id="tab-sglang" aria-selected="false" aria-controls="panel-sglang" data-tab="sglang">
-          SGLang metrics
-        </button>
-        <button type="button" role="tab" id="tab-benchmark" aria-selected="false" aria-controls="panel-benchmark" data-tab="benchmark">
-          Benchmark
-        </button>
-      </nav>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGLang Stack Monitor</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
 
-      <div
-        id="panel-container"
-        role="tabpanel"
-        aria-labelledby="tab-container"
-        class="tab-panel container-panel"
-        data-panel="container"
-      >
-        <section class="panel panel-nested">
-          <h2>Container Control</h2>
-          <p class="launch-lead container-lead">
-            Starts/stops the stack container on the host. Presets mirror
-            <code>containers/run-docker*.sh</code> and run detached (<code>sleep infinity</code>) so the
-            <strong>Launch</strong> tab can execute <code>scripts/*.sh</code> inside it.
-          </p>
-          <details class="launch-more">
-            <summary>Host env and paths</summary>
-            <p>
-              API runs on host Docker. Optional <code>HF_TOKEN</code> is passed through. Mount root is
-              <code>MONITOR_REPO_ROOT</code> (or auto-detected). Host port
-              <code>MONITOR_STACK_HOST_PORT</code> (default <code>8000</code>) maps to container
-              <code>8000</code>.
+<body>
+  <div class="layout">
+    <header class="header">
+      <h1>SGLang Stack Monitor</h1>
+      <details class="header-help">
+        <summary>About this monitor</summary>
+        <p class="lede">
+          <strong>Container</strong> runs the stack image on the host (<code>docker run</code> / start /
+          stop). <strong>Launch</strong> runs <code>scripts/*.sh</code> inside that container to start
+          <code>sglang.launch_server</code>. Set the <strong>model id</strong> for Chat/Benchmark; other
+          tabs: Logs, Tools, metrics, benchmark, chat.
+        </p>
+      </details>
+    </header>
+
+    <div class="shell">
+      <div class="shell-main">
+        <nav class="tabs" role="tablist" aria-label="Main tools">
+          <button type="button" role="tab" id="tab-container" aria-selected="true" aria-controls="panel-container"
+            data-tab="container">
+            Container
+          </button>
+          <button type="button" role="tab" id="tab-launch" aria-selected="false" aria-controls="panel-launch"
+            data-tab="launch">
+            Launch
+          </button>
+          <button type="button" role="tab" id="tab-logs" aria-selected="false" aria-controls="panel-logs"
+            data-tab="logs">
+            Logs
+          </button>
+          <button type="button" role="tab" id="tab-docker" aria-selected="false" aria-controls="panel-docker"
+            data-tab="docker">
+            Tools
+          </button>
+          <button type="button" role="tab" id="tab-sglang" aria-selected="false" aria-controls="panel-sglang"
+            data-tab="sglang">
+            SGLang metrics
+          </button>
+          <button type="button" role="tab" id="tab-benchmark" aria-selected="false" aria-controls="panel-benchmark"
+            data-tab="benchmark">
+            Benchmark
+          </button>
+        </nav>
+
+        <div id="panel-container" role="tabpanel" aria-labelledby="tab-container" class="tab-panel container-panel"
+          data-panel="container">
+          <section class="panel panel-nested">
+            <h2>Container Control</h2>
+            <p class="launch-lead container-lead">
+              Starts/stops the stack container on the host. Presets mirror
+              <code>containers/run-docker*.sh</code> and run detached (<code>sleep infinity</code>) so the
+              <strong>Launch</strong> tab can execute <code>scripts/*.sh</code> inside it.
             </p>
-          </details>
-          <div class="launch-fields container-fields">
-            <label class="field field-grow">
-              <span>Preset</span>
-              <select id="sel-stack-preset" aria-label="Stack container preset"></select>
-            </label>
-          </div>
-          <div class="launch-status-box container-actions">
-            <div class="launch-toolbar container-toolbar">
-              <button type="button" id="btn-stack-refresh" class="btn">Refresh</button>
-              <button type="button" id="btn-stack-run" class="btn primary">Start</button>
-              <button type="button" id="btn-stack-stop" class="btn">Stop</button>
+            <details class="launch-more">
+              <summary>Host env and paths</summary>
+              <p>
+                API runs on host Docker. Optional <code>HF_TOKEN</code> is passed through. Mount root is
+                <code>MONITOR_REPO_ROOT</code> (or auto-detected). Host port
+                <code>MONITOR_STACK_HOST_PORT</code> (default <code>8000</code>) maps to container
+                <code>8000</code>.
+              </p>
+            </details>
+            <div class="launch-fields container-fields">
+              <label class="field field-grow">
+                <span>Preset</span>
+                <select id="sel-stack-preset" aria-label="Stack container preset"></select>
+              </label>
             </div>
-            <p class="hint container-hint">Tip: keep it running, then use the Launch tab.</p>
-            <p id="status-stack" class="status" aria-live="polite"></p>
-          </div>
-        </section>
-      </div>
+            <div class="launch-status-box container-actions">
+              <div class="launch-toolbar container-toolbar">
+                <button type="button" id="btn-stack-refresh" class="btn">Refresh</button>
+                <button type="button" id="btn-stack-run" class="btn primary">Start</button>
+                <button type="button" id="btn-stack-stop" class="btn">Stop</button>
+              </div>
+              <p class="hint container-hint">Tip: keep it running, then use the Launch tab.</p>
+              <p id="status-stack" class="status" aria-live="polite"></p>
+            </div>
+          </section>
+        </div>
 
-      <div
-        id="panel-launch"
-        role="tabpanel"
-        aria-labelledby="tab-launch"
-        class="tab-panel launch-panel hidden"
-        data-panel="launch"
-        hidden
-      >
-        <section class="panel panel-nested">
-          <h2>Launch SGLang (<code>launch_server</code>)</h2>
-          <p class="launch-lead">
-            After a stack container is running, pick it here and run a script from <code>./scripts</code>
-            to start the LLM with <code>python3 -m sglang.launch_server</code>. While the server is
-            running, starting again is blocked. Script output while the model loads is on the
-            <strong>Logs</strong> tab (launch script log).
-          </p>
-          <details class="launch-more">
-            <summary>How it works</summary>
-            <p>
-              Host repo <code>./scripts</code> is mounted at <code>/workspace/scripts</code>. The API
-              runs <code>docker exec -d …</code> with the script’s stdout/stderr appended to
-              <code>/workspace/.monitor/sglang-launch.log</code> (that output does not appear in
-              <code>docker logs</code>, which is only the container’s main process). Open the
-              <strong>Logs</strong> tab to tail that file; <strong>Check launch server</strong> and
-              <strong>SGLang metrics</strong> show readiness.
+        <div id="panel-launch" role="tabpanel" aria-labelledby="tab-launch" class="tab-panel launch-panel hidden"
+          data-panel="launch" hidden>
+          <section class="panel panel-nested">
+            <h2>Launch SGLang (<code>launch_server</code>)</h2>
+            <p class="launch-lead">
+              After a stack container is running, pick it here and run a script from <code>./scripts</code>
+              to start the LLM with <code>python3 -m sglang.launch_server</code>. While the server is
+              running, starting again is blocked. Script output while the model loads is on the
+              <strong>Logs</strong> tab (launch script log).
             </p>
-          </details>
+            <details class="launch-more">
+              <summary>How it works</summary>
+              <p>
+                Host repo <code>./scripts</code> is mounted at <code>/workspace/scripts</code>. The API
+                runs <code>docker exec -d …</code> with the script’s stdout/stderr appended to
+                <code>/workspace/.monitor/sglang-launch.log</code> (that output does not appear in
+                <code>docker logs</code>, which is only the container’s main process). Open the
+                <strong>Logs</strong> tab to tail that file; <strong>Check launch server</strong> and
+                <strong>SGLang metrics</strong> show readiness.
+              </p>
+            </details>
 
-          <div class="launch-fields">
-            <label class="field field-grow">
-              <span>Container</span>
-              <select id="sel-launch-container" aria-label="Container for launch script"></select>
-            </label>
-            <label class="field field-grow">
-              <span>Script</span>
-              <select id="sel-launch-script" aria-label="Launch script"></select>
-            </label>
-          </div>
-
-          <div class="launch-toolbar">
-            <div class="launch-toolbar__main">
-              <button type="button" id="btn-launch-refresh-containers" class="btn">
-                Refresh containers
-              </button>
-              <button type="button" id="btn-launch-check-server" class="btn">Check launch server</button>
-              <button
-                type="button"
-                id="btn-launch-stop-server"
-                class="btn"
-                title="Send SIGTERM, then SIGKILL if needed, to processes matching python3 -m sglang.launch_server"
-              >
-                Stop launch server
-              </button>
-            </div>
-            <div class="launch-toolbar__run">
-              <button type="button" id="btn-launch-run" class="btn primary">Run script</button>
-            </div>
-          </div>
-
-          <div class="launch-status-box">
-            <p id="status-launch-server" class="status" aria-live="polite"></p>
-            <p id="status-launch-detail" class="status status--meta" aria-live="polite" hidden></p>
-            <div class="launch-apply-row">
-              <button type="button" id="btn-launch-apply-model" class="btn hidden" hidden>
-                Use as Chat/Benchmark model id
-              </button>
-            </div>
-            <p id="status-launch-script" class="status" aria-live="polite"></p>
-          </div>
-        </section>
-
-        <section class="panel panel-nested launch-model-section">
-          <h2>Chat &amp; Benchmark model id</h2>
-          <p class="launch-lead">
-            Must match <code>--served-model-name</code> from your script. Saved in this browser;
-            <strong>Check launch server</strong> syncs it to the running server’s model id when they differ.
-          </p>
-          <label class="field field-grow">
-            <span>Model id</span>
-            <input
-              type="text"
-              id="launch-model"
-              autocomplete="off"
-              placeholder="Same as --served-model-name"
-              aria-label="Preferred model id for chat and benchmark"
-            />
-          </label>
-          <p id="launch-model-status" class="status" aria-live="polite"></p>
-        </section>
-      </div>
-
-      <div
-        id="panel-logs"
-        role="tabpanel"
-        aria-labelledby="tab-logs"
-        class="tab-panel logs-panel hidden"
-        data-panel="logs"
-        hidden
-      >
-        <section class="panel panel-nested">
-          <h2>Container logs</h2>
-          <p class="logs-lead">
-            Prefer <strong>Launch script log</strong>
-            (<code>/workspace/.monitor/sglang-launch.log</code>): that is where <strong>Launch</strong>
-            tab scripts run (via <code>docker exec</code>), including load progress. Monitor stack
-            containers use <code>sleep infinity</code> as PID&nbsp;1, so <strong>Docker logs</strong>
-            (same as host <code>docker logs</code>) is usually almost empty—not your LLM session.
-          </p>
-          <div class="logs-toolbar row">
-            <button type="button" id="btn-logs-refresh-containers" class="btn">Refresh containers</button>
-            <label class="field field-grow">
-              <span>Container</span>
-              <select id="sel-logs-container" aria-label="Container for logs"></select>
-            </label>
-            <label class="field field-grow">
-              <span>Source</span>
-              <select id="sel-logs-source" aria-label="Log source">
-                <option value="launch">Launch script log (file)</option>
-                <option value="docker">Docker logs (main process)</option>
-              </select>
-            </label>
-          </div>
-          <div class="launch-log-toolbar">
-            <button type="button" id="btn-logs-refresh" class="btn">Refresh</button>
-            <label class="checkbox-row">
-              <input type="checkbox" id="chk-logs-auto" />
-              <span>Auto-refresh every 3s</span>
-            </label>
-          </div>
-          <p id="logs-status" class="status" aria-live="polite"></p>
-          <pre id="logs-out" class="out out-short logs-pre" aria-live="polite">Loading…</pre>
-        </section>
-      </div>
-
-      <div
-        id="panel-docker"
-        role="tabpanel"
-        aria-labelledby="tab-docker"
-        class="tab-panel hidden"
-        data-panel="docker"
-        hidden
-      >
-        <section class="panel panel-nested">
-          <div class="row">
-            <div id="docker-container-field" class="field">
-              <label>
+            <div class="launch-fields">
+              <label class="field field-grow">
                 <span>Container</span>
-                <select id="sel-container" aria-label="Container"></select>
+                <select id="sel-launch-container" aria-label="Container for launch script"></select>
+              </label>
+              <label class="field field-grow">
+                <span>Script</span>
+                <select id="sel-launch-script" aria-label="Launch script"></select>
+              </label>
+            </div>
+          <div class="launch-args-editor">
+            <p class="hint">
+              Launch args from script (<code>python3 -m sglang.launch_server</code>): edit values or uncheck to remove unsupported flags.
+            </p>
+            <div id="launch-args-empty" class="hint">Select a script to load args.</div>
+            <div id="launch-args-list" class="launch-args-list" aria-live="polite"></div>
+          </div>
+
+            <div class="launch-toolbar">
+              <div class="launch-toolbar__main">
+                <button type="button" id="btn-launch-refresh-containers" class="btn">
+                  Refresh containers
+                </button>
+                <button type="button" id="btn-launch-check-server" class="btn">Check launch server</button>
+                <button type="button" id="btn-launch-stop-server" class="btn"
+                  title="Send SIGTERM, then SIGKILL if needed, to processes matching python3 -m sglang.launch_server">
+                  Stop launch server
+                </button>
+              </div>
+              <div class="launch-toolbar__run">
+                <button type="button" id="btn-launch-run" class="btn primary">Run script</button>
+              </div>
+            </div>
+
+            <div class="launch-status-box">
+              <p id="status-launch-server" class="status" aria-live="polite"></p>
+              <p id="status-launch-detail" class="status status--meta" aria-live="polite" hidden></p>
+              <div class="launch-apply-row">
+                <button type="button" id="btn-launch-apply-model" class="btn hidden" hidden>
+                  Use as Chat/Benchmark model id
+                </button>
+              </div>
+              <p id="status-launch-script" class="status" aria-live="polite"></p>
+            </div>
+          </section>
+
+          <section class="panel panel-nested launch-model-section">
+            <h2>Chat &amp; Benchmark model id</h2>
+            <p class="launch-lead">
+              Must match <code>--served-model-name</code> from your script. Saved in this browser;
+              <strong>Check launch server</strong> syncs it to the running server’s model id when they differ.
+            </p>
+            <label class="field field-grow">
+              <span>Model id</span>
+              <input type="text" id="launch-model" autocomplete="off" placeholder="Same as --served-model-name"
+                aria-label="Preferred model id for chat and benchmark" />
+            </label>
+            <p id="launch-model-status" class="status" aria-live="polite"></p>
+          </section>
+        </div>
+
+        <div id="panel-logs" role="tabpanel" aria-labelledby="tab-logs" class="tab-panel logs-panel hidden"
+          data-panel="logs" hidden>
+          <section class="panel panel-nested">
+            <h2>Container logs</h2>
+            <p class="logs-lead">
+              Prefer <strong>Launch script log</strong>
+              (<code>/workspace/.monitor/sglang-launch.log</code>): that is where <strong>Launch</strong>
+              tab scripts run (via <code>docker exec</code>), including load progress. Monitor stack
+              containers use <code>sleep infinity</code> as PID&nbsp;1, so <strong>Docker logs</strong>
+              (same as host <code>docker logs</code>) is usually almost empty—not your LLM session.
+            </p>
+            <div class="logs-toolbar row">
+              <button type="button" id="btn-logs-refresh-containers" class="btn">Refresh containers</button>
+              <label class="field field-grow">
+                <span>Container</span>
+                <select id="sel-logs-container" aria-label="Container for logs"></select>
+              </label>
+              <label class="field field-grow">
+                <span>Source</span>
+                <select id="sel-logs-source" aria-label="Log source">
+                  <option value="launch">Launch script log (file)</option>
+                  <option value="docker">Docker logs (main process)</option>
+                </select>
+              </label>
+            </div>
+            <div class="launch-log-toolbar">
+              <button type="button" id="btn-logs-refresh" class="btn">Refresh</button>
+              <label class="checkbox-row">
+                <input type="checkbox" id="chk-logs-auto" />
+                <span>Auto-refresh every 3s</span>
+              </label>
+            </div>
+            <p id="logs-status" class="status" aria-live="polite"></p>
+            <pre id="logs-out" class="out out-short logs-pre" aria-live="polite">Loading…</pre>
+          </section>
+        </div>
+
+        <div id="panel-docker" role="tabpanel" aria-labelledby="tab-docker" class="tab-panel hidden" data-panel="docker"
+          hidden>
+          <section class="panel panel-nested">
+            <div class="row">
+              <div id="docker-container-field" class="field">
+                <label>
+                  <span>Container</span>
+                  <select id="sel-container" aria-label="Container"></select>
+                </label>
+              </div>
+              <label class="field field-grow">
+                <span>Tool</span>
+                <select id="sel-tool" aria-label="Tool script"></select>
+              </label>
+              <button type="button" id="btn-run" class="btn primary">Run</button>
+            </div>
+            <p id="status-docker" class="status" aria-live="polite"></p>
+          </section>
+
+          <section class="panel panel-nested">
+            <h2>Output</h2>
+            <pre id="out" class="out">Choose a tool, then run it.</pre>
+          </section>
+        </div>
+
+        <div id="panel-sglang" role="tabpanel" aria-labelledby="tab-sglang" class="tab-panel hidden" data-panel="sglang"
+          hidden>
+          <section class="panel panel-nested">
+            <p id="sglang-config" class="config-line"></p>
+            <div class="row">
+              <button type="button" id="btn-sglang-refresh" class="btn primary">Refresh metrics</button>
+              <label class="field">
+                <span>Auto-refresh</span>
+                <select id="sel-sglang-interval" aria-label="Auto-refresh interval">
+                  <option value="0">Off</option>
+                  <option value="3000">Every 3 s</option>
+                  <option value="10000" selected>Every 10 s</option>
+                  <option value="30000">Every 30 s</option>
+                </select>
+              </label>
+            </div>
+            <p id="status-sglang" class="status" aria-live="polite"></p>
+          </section>
+
+          <section class="panel panel-nested">
+            <h2>SGLang-related lines</h2>
+            <p class="hint">Lines from <code>/metrics</code> whose text includes <code>sglang</code> (case-insensitive).
+            </p>
+            <pre id="sglang-highlights" class="out out-short">Open this tab to load metrics.</pre>
+          </section>
+
+          <section class="panel panel-nested">
+            <h2>Full metrics (preview)</h2>
+            <label class="checkbox-row">
+              <input type="checkbox" id="chk-sglang-raw" />
+              <span>Show raw Prometheus text (may be large)</span>
+            </label>
+            <pre id="sglang-raw" class="out hidden">—</pre>
+          </section>
+        </div>
+
+        <div id="panel-benchmark" role="tabpanel" aria-labelledby="tab-benchmark" class="tab-panel hidden"
+          data-panel="benchmark" hidden>
+          <section class="panel panel-nested">
+            <p class="hint">
+              Repeated non-streaming <code>POST /v1/chat/completions</code> via this app&rsquo;s API.
+              Lower concurrency on shared machines. Compare with live <strong>SGLang metrics</strong>
+              in the previous tab. Results include a <strong>sample assistant reply</strong> from
+              scheduled request #1. Higher <strong>max_tokens</strong> means each completion can run
+              much longer (normal — the model may generate up to that many tokens).
+            </p>
+            <div class="row">
+              <label class="field field-grow">
+                <span>Model</span>
+                <input type="text" id="bench-model" autocomplete="off" placeholder="Same id as your SGLang launch"
+                  aria-label="Benchmark model id" />
               </label>
             </div>
             <label class="field field-grow">
-              <span>Tool</span>
-              <select id="sel-tool" aria-label="Tool script"></select>
+              <span>Prompt (repeated per request)</span>
+              <textarea id="bench-message" rows="3" placeholder="Short prompt for load test"
+                aria-label="Benchmark prompt"></textarea>
             </label>
-            <button type="button" id="btn-run" class="btn primary">Run</button>
-          </div>
-          <p id="status-docker" class="status" aria-live="polite"></p>
-        </section>
-
-        <section class="panel panel-nested">
-          <h2>Output</h2>
-          <pre id="out" class="out">Choose a tool, then run it.</pre>
-        </section>
-      </div>
-
-      <div
-        id="panel-sglang"
-        role="tabpanel"
-        aria-labelledby="tab-sglang"
-        class="tab-panel hidden"
-        data-panel="sglang"
-        hidden
-      >
-        <section class="panel panel-nested">
-          <p id="sglang-config" class="config-line"></p>
-          <div class="row">
-            <button type="button" id="btn-sglang-refresh" class="btn primary">Refresh metrics</button>
-            <label class="field">
-              <span>Auto-refresh</span>
-              <select id="sel-sglang-interval" aria-label="Auto-refresh interval">
-                <option value="0">Off</option>
-                <option value="3000">Every 3 s</option>
-                <option value="10000" selected>Every 10 s</option>
-                <option value="30000">Every 30 s</option>
-              </select>
-            </label>
-          </div>
-          <p id="status-sglang" class="status" aria-live="polite"></p>
-        </section>
-
-        <section class="panel panel-nested">
-          <h2>SGLang-related lines</h2>
-          <p class="hint">Lines from <code>/metrics</code> whose text includes <code>sglang</code> (case-insensitive).</p>
-          <pre id="sglang-highlights" class="out out-short">Open this tab to load metrics.</pre>
-        </section>
-
-        <section class="panel panel-nested">
-          <h2>Full metrics (preview)</h2>
-          <label class="checkbox-row">
-            <input type="checkbox" id="chk-sglang-raw" />
-            <span>Show raw Prometheus text (may be large)</span>
-          </label>
-          <pre id="sglang-raw" class="out hidden">—</pre>
-        </section>
-      </div>
-
-      <div
-        id="panel-benchmark"
-        role="tabpanel"
-        aria-labelledby="tab-benchmark"
-        class="tab-panel hidden"
-        data-panel="benchmark"
-        hidden
-      >
-        <section class="panel panel-nested">
-          <p class="hint">
-            Repeated non-streaming <code>POST /v1/chat/completions</code> via this app&rsquo;s API.
-            Lower concurrency on shared machines. Compare with live <strong>SGLang metrics</strong>
-            in the previous tab. Results include a <strong>sample assistant reply</strong> from
-            scheduled request #1. Higher <strong>max_tokens</strong> means each completion can run
-            much longer (normal — the model may generate up to that many tokens).
-          </p>
-          <div class="row">
-            <label class="field field-grow">
-              <span>Model</span>
-              <input
-                type="text"
-                id="bench-model"
-                autocomplete="off"
-                placeholder="Same id as your SGLang launch"
-                aria-label="Benchmark model id"
-              />
-            </label>
-          </div>
-          <label class="field field-grow">
-            <span>Prompt (repeated per request)</span>
-            <textarea
-              id="bench-message"
-              rows="3"
-              placeholder="Short prompt for load test"
-              aria-label="Benchmark prompt"
-            ></textarea>
-          </label>
-          <div class="row">
-            <label class="field field-narrow">
-              <span>Concurrency</span>
-              <input type="number" id="bench-concurrency" min="1" max="32" value="4" aria-label="Concurrency" />
-            </label>
-            <label class="field field-narrow">
-              <span>Total requests</span>
-              <input type="number" id="bench-requests" min="1" max="200" value="20" aria-label="Total requests" />
-            </label>
-            <label class="field field-narrow">
-              <span>max_tokens (optional)</span>
-              <input type="number" id="bench-max-tokens" min="1" placeholder="—" aria-label="max tokens" />
-            </label>
-            <button type="button" id="bench-run" class="btn primary">Run benchmark</button>
-          </div>
-          <p id="bench-status" class="status" aria-live="polite"></p>
-        </section>
-        <section class="panel panel-nested">
-          <h2>Results</h2>
-          <pre id="bench-results" class="out out-short">—</pre>
-        </section>
-      </div>
+            <div class="row">
+              <label class="field field-narrow">
+                <span>Concurrency</span>
+                <input type="number" id="bench-concurrency" min="1" max="32" value="4" aria-label="Concurrency" />
+              </label>
+              <label class="field field-narrow">
+                <span>Total requests</span>
+                <input type="number" id="bench-requests" min="1" max="200" value="20" aria-label="Total requests" />
+              </label>
+              <label class="field field-narrow">
+                <span>max_tokens (optional)</span>
+                <input type="number" id="bench-max-tokens" min="1" placeholder="—" aria-label="max tokens" />
+              </label>
+              <button type="button" id="bench-run" class="btn primary">Run benchmark</button>
+            </div>
+            <p id="bench-status" class="status" aria-live="polite"></p>
+          </section>
+          <section class="panel panel-nested">
+            <h2>Results</h2>
+            <pre id="bench-results" class="out out-short">—</pre>
+          </section>
         </div>
-
-        <aside class="chat-aside" aria-label="Chat playground">
-          <h2 class="chat-aside__title">Chat</h2>
-          <p class="hint chat-aside__hint">
-            Uses <code>POST /api/sglang/chat/completions</code> → SGLang
-            <code>/v1/chat/completions</code>. Model matches the <strong>Launch</strong> tab (editable here too).
-          </p>
-          <label class="field field-chat-model">
-            <span>Model</span>
-            <input
-              type="text"
-              id="chat-model"
-              autocomplete="off"
-              placeholder="e.g. path or id from your run script"
-              aria-label="Model id"
-            />
-          </label>
-          <div id="chat-messages" class="chat-messages" role="log" aria-live="polite"></div>
-          <label class="field field-chat-input">
-            <span>Message</span>
-            <textarea id="chat-input" rows="3" placeholder="Message (Enter to send, Shift+Enter for newline)" aria-label="Chat message"></textarea>
-          </label>
-          <div class="row chat-actions">
-            <button type="button" id="chat-send" class="btn primary">Send</button>
-            <button type="button" id="chat-clear" class="btn">Clear</button>
-          </div>
-          <p id="chat-status" class="status chat-status" aria-live="polite"></p>
-        </aside>
       </div>
+
+      <aside class="chat-aside" aria-label="Chat playground">
+        <h2 class="chat-aside__title">Chat</h2>
+        <p class="hint chat-aside__hint">
+          Uses <code>POST /api/sglang/chat/completions</code> → SGLang
+          <code>/v1/chat/completions</code>. Model matches the <strong>Launch</strong> tab (editable here too).
+        </p>
+        <label class="field field-chat-model">
+          <span>Model</span>
+          <input type="text" id="chat-model" autocomplete="off" placeholder="e.g. path or id from your run script"
+            aria-label="Model id" />
+        </label>
+        <div id="chat-messages" class="chat-messages" role="log" aria-live="polite"></div>
+        <label class="field field-chat-input">
+          <span>Message</span>
+          <textarea id="chat-input" rows="3" placeholder="Message (Enter to send, Shift+Enter for newline)"
+            aria-label="Chat message"></textarea>
+        </label>
+        <div class="row chat-actions">
+          <button type="button" id="chat-send" class="btn primary">Send</button>
+          <button type="button" id="chat-clear" class="btn">Clear</button>
+        </div>
+        <p id="chat-status" class="status chat-status" aria-live="polite"></p>
+      </aside>
     </div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+
 </html>

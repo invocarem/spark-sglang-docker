@@ -323,13 +323,22 @@ app.post("/api/launch", async (c) => {
   const o = body as Record<string, unknown>;
   const container = typeof o.container === "string" ? o.container.trim() : "";
   const script = typeof o.script === "string" ? o.script.trim() : "";
+  const argOverrides = Array.isArray(o.argOverrides)
+    ? o.argOverrides
+        .filter((x): x is Record<string, unknown> => typeof x === "object" && x !== null)
+        .map((x) => ({
+          key: typeof x.key === "string" ? x.key : "",
+          value: typeof x.value === "string" ? x.value : "",
+          enabled: x.enabled === false ? false : true,
+        }))
+    : undefined;
   if (!container) {
     return c.json({ error: "Missing container" }, 400);
   }
   if (!script) {
     return c.json({ error: "Missing script" }, 400);
   }
-  const result = await runLaunchScriptInContainer(container, script);
+  const result = await runLaunchScriptInContainer(container, script, argOverrides);
   if (!result.ok) {
     const code = result.conflict ? 409 : 400;
     return c.json(

@@ -18,12 +18,21 @@ type LaunchScriptInfo = {
   id: string;
   label: string;
   pathInContainer: string;
+  launchArgs: LaunchArgPair[];
+};
+
+type LaunchArgPair = {
+  key: string;
+  value: string;
+  enabled: boolean;
 };
 
 const btnRefresh = document.querySelector<HTMLButtonElement>("#btn-launch-refresh-containers");
 const btnCheck = document.querySelector<HTMLButtonElement>("#btn-launch-check-server");
 const selContainer = document.querySelector<HTMLSelectElement>("#sel-launch-container");
 const selScript = document.querySelector<HTMLSelectElement>("#sel-launch-script");
+const launchArgsList = document.querySelector<HTMLDivElement>("#launch-args-list");
+const launchArgsEmpty = document.querySelector<HTMLDivElement>("#launch-args-empty");
 const btnRun = document.querySelector<HTMLButtonElement>("#btn-launch-run");
 const btnStopServer = document.querySelector<HTMLButtonElement>("#btn-launch-stop-server");
 const statusServerEl = document.querySelector<HTMLParagraphElement>("#status-launch-server");
@@ -34,6 +43,7 @@ const btnApplyModel = document.querySelector<HTMLButtonElement>("#btn-launch-app
 /** `true` = pgrep saw launch_server; `false` = not running; `null` = not checked or unknown */
 let lastServerRunning: boolean | null = null;
 let lastServedModel: string | null = null;
+const scriptsById = new Map<string, LaunchScriptInfo>();
 
 function stripSlashName(names: string): string {
   const n = names.trim().split(/\s+/)[0] ?? "";
@@ -74,6 +84,60 @@ function setApplyModelButton(visible: boolean, modelLabel?: string): void {
   if (visible && modelLabel) {
     btnApplyModel.textContent = `Use “${modelLabel}” for Chat / Benchmark`;
   }
+}
+
+function renderLaunchArgs(scriptId: string): void {
+  if (!launchArgsList || !launchArgsEmpty) return;
+  launchArgsList.innerHTML = "";
+  const info = scriptsById.get(scriptId);
+  const args = info?.launchArgs ?? [];
+  if (args.length === 0) {
+    launchArgsEmpty.hidden = false;
+    launchArgsEmpty.textContent = "No launch args detected from this script.";
+    return;
+  }
+  launchArgsEmpty.hidden = true;
+  for (const [index, arg] of args.entries()) {
+    const row = document.createElement("label");
+    row.className = "launch-arg-row";
+    row.dataset.argIndex = String(index);
+
+    const enabled = document.createElement("input");
+    enabled.type = "checkbox";
+    enabled.checked = arg.enabled !== false;
+    enabled.className = "launch-arg-enabled";
+    enabled.setAttribute("aria-label", `Enable ${arg.key}`);
+
+    const key = document.createElement("code");
+    key.textContent = arg.key;
+    key.className = "launch-arg-key";
+
+    const value = document.createElement("input");
+    value.type = "text";
+    value.value = arg.value ?? "";
+    value.className = "launch-arg-value";
+    value.setAttribute("aria-label", `${arg.key} value`);
+
+    row.appendChild(enabled);
+    row.appendChild(key);
+    row.appendChild(value);
+    launchArgsList.appendChild(row);
+  }
+}
+
+function collectLaunchArgsOverrides(scriptId: string): LaunchArgPair[] {
+  const info = scriptsById.get(scriptId);
+  if (!launchArgsList || !info) return [];
+  const rows = Array.from(launchArgsList.querySelectorAll<HTMLLabelElement>(".launch-arg-row"));
+  return rows.map((row, i) => {
+    const key =
+      row.querySelector<HTMLElement>(".launch-arg-key")?.textContent?.trim() ??
+      info.launchArgs[i]?.key ??
+      "";
+    const value = row.querySelector<HTMLInputElement>(".launch-arg-value")?.value ?? "";
+    const enabled = row.querySelector<HTMLInputElement>(".launch-arg-enabled")?.checked ?? true;
+    return { key, value, enabled };
+  });
 }
 
 function updateRunButtonState(): void {
@@ -187,6 +251,7 @@ async function loadScripts(): Promise<void> {
       error?: string;
     };
     selScript.innerHTML = "";
+    scriptsById.clear();
     const scripts = body.scripts ?? [];
     if (!res.ok) {
       const opt = document.createElement("option");
@@ -207,11 +272,13 @@ async function loadScripts(): Promise<void> {
       return;
     }
     for (const s of scripts) {
+      scriptsById.set(s.id, s);
       const opt = document.createElement("option");
       opt.value = s.id;
       opt.textContent = `${s.label} → ${s.pathInContainer}`;
       selScript.appendChild(opt);
     }
+    renderLaunchArgs(selScript.value);
     setScriptStatus(`Loaded ${scripts.length} script(s) from ./scripts.`);
   } catch (e) {
     selScript.innerHTML = "";
@@ -332,6 +399,7 @@ async function runLaunchScript(): Promise<void> {
     setScriptStatus("Launch server already running—use Check launch server or stop the process first.", true);
     return;
   }
+  const argOverrides = collectLaunchArgsOverrides(script);
 
   setScriptStatus(`Starting ${script} in ${container}…`);
   btnRun.disabled = true;
@@ -339,7 +407,11 @@ async function runLaunchScript(): Promise<void> {
     const res = await fetch("/api/launch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ container, script }),
+      body: JSON.stringify({
+        container,
+        script,
+        argOverrides,
+      }),
     });
     const body = (await res.json()) as {
       ok?: boolean;
@@ -360,8 +432,9 @@ async function runLaunchScript(): Promise<void> {
       return;
     }
 
+    const overrideHint = argOverrides.length > 0 ? " Launch args override applied." : "";
     setScriptStatus(
-      `${body.message ?? "Started."} Use the Logs tab (launch script log) to watch output while the model loads.`,
+      `${body.message ?? "Started."}${overrideHint} Use the Logs tab (launch script log) to watch output while the model loads.`,
     );
     window.setTimeout(() => void refreshLaunchStatus(), 2000);
   } catch (e) {
@@ -380,7 +453,10 @@ export function initLaunch(): void {
   selContainer?.addEventListener("change", () => {
     void refreshLaunchStatus();
   });
-  selScript?.addEventListener("change", () => updateRunButtonState());
+  selScript?.addEventListener("change", () => {
+    renderLaunchArgs(selScript.value.trim());
+    updateRunButtonState();
+  });
   btnRefresh?.addEventListener("click", () => void loadContainers());
   btnCheck?.addEventListener("click", () => void refreshLaunchStatus());
   btnStopServer?.addEventListener("click", () => void stopLaunchServer());

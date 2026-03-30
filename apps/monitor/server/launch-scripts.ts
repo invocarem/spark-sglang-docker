@@ -70,7 +70,88 @@ export function normalizeLaunchLogText(text: string): string {
   return lines.join("\n");
 }
 
-export function listLaunchScripts(): { id: string; label: string; pathInContainer: string }[] {
+export type LaunchArgPair = {
+  key: string;
+  value: string;
+  enabled: boolean;
+};
+
+type ScriptMeta = {
+  launchArgs: LaunchArgPair[];
+};
+
+function parseSimpleAssignments(scriptText: string): Map<string, string> {
+  const vars = new Map<string, string>();
+  for (const rawLine of scriptText.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+    if (!m) continue;
+    const key = m[1] ?? "";
+    let value = (m[2] ?? "").trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    vars.set(key, value);
+  }
+  return vars;
+}
+
+function parseLaunchArgsFromScriptText(scriptText: string): LaunchArgPair[] {
+  const vars = parseSimpleAssignments(scriptText);
+  const lines = scriptText.split(/\r?\n/);
+  const out: LaunchArgPair[] = [];
+  let inLaunch = false;
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!inLaunch) {
+      if (/python3\s+-m\s+sglang\.launch_server\b/.test(line)) {
+        inLaunch = true;
+      }
+      continue;
+    }
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+    const noSlash = line.replace(/\\\s*$/, "").trim();
+    const m = noSlash.match(/^(--[A-Za-z0-9][A-Za-z0-9-]*)(?:\s+(.+))?$/);
+    if (!m) {
+      if (!line.endsWith("\\")) break;
+      continue;
+    }
+    const key = m[1] ?? "";
+    const rawValue = (m[2] ?? "").trim();
+    const varRef = rawValue.match(/^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$/);
+    const value = varRef ? (vars.get(varRef[1] ?? "") ?? rawValue) : rawValue;
+    out.push({ key, value, enabled: true });
+    if (!line.endsWith("\\")) break;
+  }
+  return out;
+}
+
+function readScriptMeta(scriptBasename: string): ScriptMeta {
+  const scriptsDir = path.join(findRepoRoot(), "scripts");
+  const fullPath = path.join(scriptsDir, scriptBasename);
+  let text = "";
+  try {
+    text = fs.readFileSync(fullPath, "utf8");
+  } catch {
+    return { launchArgs: [] };
+  }
+  return {
+    launchArgs: parseLaunchArgsFromScriptText(text),
+  };
+}
+
+export function listLaunchScripts(): {
+  id: string;
+  label: string;
+  pathInContainer: string;
+  launchArgs: LaunchArgPair[];
+}[] {
   const scriptsDir = path.join(findRepoRoot(), "scripts");
   let names: string[] = [];
   try {
@@ -83,6 +164,7 @@ export function listLaunchScripts(): { id: string; label: string; pathInContaine
     id,
     label: id,
     pathInContainer: `${CONTAINER_SCRIPTS_DIR}/${id}`,
+    launchArgs: readScriptMeta(id).launchArgs,
   }));
 }
 
@@ -190,6 +272,7 @@ export async function getLaunchLogTail(
 export async function runLaunchScriptInContainer(
   container: string,
   scriptBasename: string,
+  argOverrides?: LaunchArgPair[],
 ): Promise<RunLaunchResult> {
   assertSafeContainerName(container);
   if (!isAllowedLaunchScript(scriptBasename)) {
@@ -214,12 +297,39 @@ export async function runLaunchScriptInContainer(
 
   const inContainer = `${CONTAINER_SCRIPTS_DIR}/${scriptBasename}`;
   const logPath = LAUNCH_LOG_PATH;
+  if (
+    argOverrides !== undefined &&
+    !argOverrides.every(
+      (a) =>
+        typeof a.key === "string" &&
+        a.key.startsWith("--") &&
+        a.key.length > 2 &&
+        /^[A-Za-z0-9-]+$/.test(a.key.slice(2)) &&
+        typeof a.value === "string" &&
+        typeof a.enabled === "boolean",
+    )
+  ) {
+    return { ok: false, error: "Invalid argOverrides format" };
+  }
   /**
    * Detached `docker exec` has no TTY; many loaders disable or break progress bars without one.
    * `script -qefc` (util-linux) allocates a pseudo-terminal when available; fall back to plain bash.
    */
+  const sedParts =
+    argOverrides?.map((a) => {
+      const escapedKey = a.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      if (!a.enabled) {
+        return `-e "/^[[:space:]]*${escapedKey}\\b[[:space:]]*/d"`;
+      }
+      const escapedValue = a.value.replace(/\\/g, "\\\\").replace(/&/g, "\\&").replace(/"/g, '\\"');
+      return `-e "s|^[[:space:]]*${escapedKey}\\b.*$|    ${a.key} ${escapedValue} \\\\|"`;
+    }) ?? [];
+  const launchCommand =
+    sedParts.length === 0
+      ? `bash ${inContainer}`
+      : `tmp="/tmp/monitor-launch-${scriptBasename}-$$.sh"; sed -E ${sedParts.join(" ")} "${inContainer}" > "$tmp" && chmod +x "$tmp" && bash "$tmp"; rc=$?; rm -f "$tmp"; exit $rc`;
   const runScript =
-    `(command -v script >/dev/null 2>&1 && script -qefc "bash ${inContainer}" - || bash ${inContainer}) >> ${logPath} 2>&1`;
+    `(command -v script >/dev/null 2>&1 && script -qefc '${launchCommand}' - || sh -c '${launchCommand}') >> ${logPath} 2>&1`;
   const shellCmd = [
     "mkdir -p /workspace/.monitor",
     `printf '%s\\n' "---- $(date -u +%Y-%m-%dT%H:%M:%SZ) starting ${scriptBasename} ----" >> ${logPath}`,

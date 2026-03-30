@@ -158,6 +158,40 @@
   margin-top: 0.35rem;
 }
 
+.launch-args-editor {
+  margin-top: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  background: color-mix(in srgb, var(--bg) 80%, var(--surface));
+}
+
+.launch-args-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.launch-arg-row {
+  display: grid;
+  grid-template-columns: auto minmax(10rem, 1fr) 2fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.launch-arg-row code {
+  font-size: 0.8rem;
+}
+
+@media (max-width: 640px) {
+  .launch-arg-row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .launch-arg-row input[type="text"] {
+    grid-column: 1 / -1;
+  }
+}
+
 /* Shared with Logs tab toolbar */
 .launch-log-toolbar {
   display: flex;
