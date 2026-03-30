@@ -296,7 +296,11 @@ app.get("/api/launch/log", async (c) => {
   if (!container) {
     return c.json({ error: "Missing query parameter: container" }, 400);
   }
-  const result = await getLaunchLogTail(container);
+  const linesParam = c.req.query("lines")?.trim() ?? "";
+  const parsed = Number(linesParam);
+  const lines =
+    linesParam && Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : undefined;
+  const result = await getLaunchLogTail(container, lines);
   if (!result.ok) {
     return c.json({ error: result.error, text: null, missing: null }, 502);
   }

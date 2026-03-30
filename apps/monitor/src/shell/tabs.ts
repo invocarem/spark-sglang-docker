@@ -1,4 +1,4 @@
-/** Tab strip for the main column: Container, Launch, Logs, Docker / tools, SGLang metrics, Benchmark. */
+/** Tab strip for the main column: Container, Launch, Logs, Tools, SGLang metrics, Benchmark. */
 
 export type ShellTabId = "container" | "launch" | "logs" | "docker" | "sglang" | "benchmark";
 

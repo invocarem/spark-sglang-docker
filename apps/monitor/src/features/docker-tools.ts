@@ -1,6 +1,6 @@
 /**
- * Docker / tools: host `docker logs` / `docker inspect` (image labels) and whitelisted
- * `tools/` scripts via `/api/probe`. Tool list comes from `GET /api/tools` (see server `TOOLS`).
+ * Tools tab: host `docker logs` / `docker inspect` plus launch script log tails.
+ * Most useful here is launch script output (`/api/launch/log?lines=200`) for model loading.
  */
 
 import { pickPreferredContainer } from "./container-preferences";
@@ -21,6 +21,7 @@ type ToolInfo = {
 };
 
 const DEFAULT_TOOL_ID = "collect_env";
+const TOOL_LAUNCH_LOG_200 = "launch_log_200";
 
 function normalizeProbeText(text: string): string {
   if (!text) return text;
@@ -38,8 +39,8 @@ const FALLBACK_PROBE_TOOLS: readonly { id: string; text: string }[] = [
 
 const sel = document.querySelector<HTMLSelectElement>("#sel-container");
 const selTool = document.querySelector<HTMLSelectElement>("#sel-tool");
-const btnRefresh = document.querySelector<HTMLButtonElement>("#btn-refresh");
 const btnRun = document.querySelector<HTMLButtonElement>("#btn-run");
+const containerField = document.querySelector<HTMLDivElement>("#docker-container-field");
 const statusDocker = document.querySelector<HTMLParagraphElement>("#status-docker");
 const outEl = document.querySelector<HTMLPreElement>("#out");
 
@@ -96,16 +97,23 @@ async function loadTools(): Promise<void> {
     }
     const tools = body.tools ?? [];
     selTool.innerHTML = "";
+    const launchOpt = document.createElement("option");
+    launchOpt.value = TOOL_LAUNCH_LOG_200;
+    launchOpt.textContent = "Launch script log — last 200 lines";
+    selTool.appendChild(launchOpt);
     for (const t of tools) {
       const opt = document.createElement("option");
       opt.value = t.id;
       opt.textContent = `${t.label} — ${t.description}`;
       selTool.appendChild(opt);
     }
-    const hasDefault = tools.some((t) => t.id === DEFAULT_TOOL_ID);
-    if (hasDefault) selTool.value = DEFAULT_TOOL_ID;
+    selTool.value = TOOL_LAUNCH_LOG_200;
   } catch {
     selTool.innerHTML = "";
+    const launchOpt = document.createElement("option");
+    launchOpt.value = TOOL_LAUNCH_LOG_200;
+    launchOpt.textContent = "Launch script log — last 200 lines";
+    selTool.appendChild(launchOpt);
     for (const t of FALLBACK_PROBE_TOOLS) {
       const opt = document.createElement("option");
       opt.value = t.id;
@@ -116,9 +124,9 @@ async function loadTools(): Promise<void> {
 }
 
 async function loadContainers(): Promise<void> {
-  if (!sel || !btnRefresh) return;
+  if (!sel) return;
+  const previous = sel.value.trim();
   setDockerStatus("Loading containers…");
-  btnRefresh.disabled = true;
   try {
     const res = await fetch("/api/containers");
     const body = (await res.json()) as {
@@ -136,6 +144,7 @@ async function loadContainers(): Promise<void> {
       opt.value = "";
       opt.textContent = "(no running containers)";
       sel.appendChild(opt);
+      if (containerField) containerField.hidden = false;
       setDockerStatus("No running containers. Start one with ./run-docker.sh");
       return;
     }
@@ -146,27 +155,61 @@ async function loadContainers(): Promise<void> {
       opt.textContent = `${name} — ${row.Image}`;
       sel.appendChild(opt);
     }
-    const preferred = pickPreferredContainer(rows);
-    if (preferred) sel.value = preferred;
+    if (previous && rows.some((row) => stripSlashName(row.Names) === previous)) {
+      sel.value = previous;
+    } else {
+      const preferred = pickPreferredContainer(rows);
+      if (preferred) sel.value = preferred;
+    }
+    if (containerField) containerField.hidden = rows.length <= 1;
     setDockerStatus(`Loaded ${rows.length} container(s).`);
   } catch (e) {
     setDockerStatus(e instanceof Error ? e.message : String(e), true);
-  } finally {
-    btnRefresh.disabled = false;
   }
 }
 
 async function runTool(): Promise<void> {
   if (!sel || !btnRun || !outEl || !selTool) return;
+  await loadContainers();
   const container = sel.value.trim();
   if (!container) {
     setDockerStatus("Pick a container first.", true);
     return;
   }
   const tool = selTool.value.trim() || DEFAULT_TOOL_ID;
-  setDockerStatus(`Running ${tool} in ${container}…`);
+  setDockerStatus(
+    tool === TOOL_LAUNCH_LOG_200
+      ? `Loading launch script log in ${container}…`
+      : `Running ${tool} in ${container}…`,
+  );
   btnRun.disabled = true;
   try {
+    if (tool === TOOL_LAUNCH_LOG_200) {
+      const res = await fetch(
+        `/api/launch/log?container=${encodeURIComponent(container)}&lines=200`,
+      );
+      const body = (await res.json()) as {
+        text?: string;
+        missing?: boolean;
+        error?: string;
+      };
+      if (!res.ok) {
+        outEl.textContent = body.error ?? `HTTP ${res.status}`;
+        setDockerStatus("Launch script log request failed.", true);
+        return;
+      }
+      if (body.missing) {
+        outEl.textContent =
+          "(No launch log file yet. Run a script from the Launch tab once, or the container cannot read /workspace/.monitor/sglang-launch.log.)";
+        setDockerStatus("Launch log file not found.");
+        return;
+      }
+      const text = typeof body.text === "string" ? normalizeProbeText(body.text) : "";
+      outEl.textContent = text.trim() ? text : "(Log file is empty.)";
+      setDockerStatus(`Launch script log (last 200 lines) — ${container}`);
+      return;
+    }
+
     const res = await fetch(
       `/api/probe?container=${encodeURIComponent(container)}&tool=${encodeURIComponent(tool)}`,
     );
@@ -198,7 +241,6 @@ async function runTool(): Promise<void> {
 }
 
 export function initDockerTools(): void {
-  btnRefresh?.addEventListener("click", () => void loadContainers());
   btnRun?.addEventListener("click", () => void runTool());
   void loadTools();
   void loadContainers();

@@ -108,7 +108,28 @@ export type DockerInspectToolMeta = {
   kind: "docker_inspect";
 };
 
-export type ToolMeta = ExecToolMeta | DockerLogsToolMeta | DockerInspectToolMeta;
+export type ContainerStatsToolMeta = {
+  id: string;
+  label: string;
+  description: string;
+  format: "text";
+  kind: "container_stats";
+};
+
+export type GpuLiveToolMeta = {
+  id: string;
+  label: string;
+  description: string;
+  format: "json";
+  kind: "gpu_live";
+};
+
+export type ToolMeta =
+  | ExecToolMeta
+  | DockerLogsToolMeta
+  | DockerInspectToolMeta
+  | ContainerStatsToolMeta
+  | GpuLiveToolMeta;
 
 export const TOOLS: readonly ToolMeta[] = [
   {
@@ -126,6 +147,22 @@ export const TOOLS: readonly ToolMeta[] = [
       "Host: labels from the container's image (e.g. dev.scitrera.sglang_version — use when pip reports sglang as 0.0.0)",
     format: "json",
     kind: "docker_inspect",
+  },
+  {
+    id: "container_stats",
+    label: "container stats (cpu/mem/io)",
+    description:
+      "Host: docker stats --no-stream for this container (CPU%, memory usage/limit/%, net I/O, block I/O, PIDs)",
+    format: "text",
+    kind: "container_stats",
+  },
+  {
+    id: "gpu_live",
+    label: "gpu live (nvidia-smi JSON)",
+    description:
+      "Container: live GPU utilization, memory used/total, temperature, power from nvidia-smi (JSON)",
+    format: "json",
+    kind: "gpu_live",
   },
   {
     id: "collect_env",
@@ -227,6 +264,52 @@ async function dockerInspectImageLabels(container: string): Promise<DockerResult
   return runDocker(["image", "inspect", imageId, "--format", "{{json .Config.Labels}}"]);
 }
 
+/** One-shot host view of runtime container usage (CPU/memory/network/block I/O). */
+async function dockerContainerStats(container: string): Promise<DockerResult> {
+  return runDocker([
+    "stats",
+    "--no-stream",
+    "--format",
+    "table {{.Container}}\t{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}\t{{.PIDs}}",
+    container,
+  ]);
+}
+
+/** One-shot live GPU metrics from inside the container. */
+async function dockerGpuLive(container: string): Promise<DockerResult> {
+  const r = await runDocker([
+    "exec",
+    container,
+    "sh",
+    "-lc",
+    'if ! command -v nvidia-smi >/dev/null 2>&1; then echo "nvidia-smi not found in container PATH"; exit 127; fi; nvidia-smi --query-gpu=index,name,utilization.gpu,utilization.memory,memory.used,memory.total,temperature.gpu,power.draw --format=csv,noheader,nounits',
+  ]);
+  if (r.code !== 0) return r;
+
+  const rows = r.stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.split(",").map((v) => v.trim()));
+
+  const data = rows.map((parts) => ({
+    index: Number(parts[0] ?? "0"),
+    name: parts[1] ?? "",
+    utilization_gpu_percent: Number(parts[2] ?? "0"),
+    utilization_memory_percent: Number(parts[3] ?? "0"),
+    memory_used_mib: Number(parts[4] ?? "0"),
+    memory_total_mib: Number(parts[5] ?? "0"),
+    temperature_c: Number(parts[6] ?? "0"),
+    power_draw_w: Number(parts[7] ?? "0"),
+  }));
+
+  return {
+    code: 0,
+    stdout: JSON.stringify({ gpus: data }),
+    stderr: r.stderr,
+  };
+}
+
 /** Run a command in the container in detached mode (returns immediately; use for long-running processes). */
 export async function dockerExecDetached(
   container: string,
@@ -259,6 +342,12 @@ export async function runToolInContainer(
   }
   if ("kind" in meta && meta.kind === "docker_inspect") {
     return dockerInspectImageLabels(container);
+  }
+  if ("kind" in meta && meta.kind === "container_stats") {
+    return dockerContainerStats(container);
+  }
+  if ("kind" in meta && meta.kind === "gpu_live") {
+    return dockerGpuLive(container);
   }
   const execMeta = meta as ExecToolMeta;
   if (execMeta.runner === "bash") {

@@ -16,7 +16,7 @@
             <strong>Container</strong> runs the stack image on the host (<code>docker run</code> / start /
             stop). <strong>Launch</strong> runs <code>scripts/*.sh</code> inside that container to start
             <code>sglang.launch_server</code>. Set the <strong>model id</strong> for Chat/Benchmark; other
-            tabs: Logs, Docker tools, metrics, benchmark, chat.
+            tabs: Logs, Tools, metrics, benchmark, chat.
           </p>
         </details>
       </header>
@@ -41,7 +41,7 @@
           Logs
         </button>
         <button type="button" role="tab" id="tab-docker" aria-selected="false" aria-controls="panel-docker" data-tab="docker">
-          Docker / tools
+          Tools
         </button>
         <button type="button" role="tab" id="tab-sglang" aria-selected="false" aria-controls="panel-sglang" data-tab="sglang">
           SGLang metrics
@@ -59,40 +59,36 @@
         data-panel="container"
       >
         <section class="panel panel-nested">
-          <h2>Stack container (host Docker)</h2>
-          <p class="launch-lead">
-            Presets use the same <code>docker run</code> flags as <code>containers/run-docker.sh</code> and
-            <code>containers/run-docker-openai.sh</code> (GPU, shm, port, mounts, env). From a terminal you
-            can run those scripts for an interactive <code>bash</code> session; this tab starts a detached
-            container with <code>sleep infinity</code> so the <strong>Launch</strong> tab can
-            <code>docker exec</code> <code>scripts/*.sh</code>. Default host port is <code>8000</code> unless
-            you set <code>MONITOR_STACK_HOST_PORT</code>.
+          <h2>Container Control</h2>
+          <p class="launch-lead container-lead">
+            Starts/stops the stack container on the host. Presets mirror
+            <code>containers/run-docker*.sh</code> and run detached (<code>sleep infinity</code>) so the
+            <strong>Launch</strong> tab can execute <code>scripts/*.sh</code> inside it.
           </p>
           <details class="launch-more">
-            <summary>Env / paths</summary>
+            <summary>Host env and paths</summary>
             <p>
-              API runs on the host; set <code>HF_TOKEN</code> if needed. Repo root for
-              <code>-v …:/workspace</code> is <code>MONITOR_REPO_ROOT</code> or auto-detected. Host port:
+              API runs on host Docker. Optional <code>HF_TOKEN</code> is passed through. Mount root is
+              <code>MONITOR_REPO_ROOT</code> (or auto-detected). Host port
               <code>MONITOR_STACK_HOST_PORT</code> (default <code>8000</code>) maps to container
               <code>8000</code>.
             </p>
           </details>
-          <div class="launch-fields">
+          <div class="launch-fields container-fields">
             <label class="field field-grow">
-              <span>Preset image</span>
+              <span>Preset</span>
               <select id="sel-stack-preset" aria-label="Stack container preset"></select>
             </label>
           </div>
-          <div class="launch-toolbar">
-            <div class="launch-toolbar__main">
-              <button type="button" id="btn-stack-refresh" class="btn">Refresh status</button>
+          <div class="launch-status-box container-actions">
+            <div class="launch-toolbar container-toolbar">
+              <button type="button" id="btn-stack-refresh" class="btn">Refresh</button>
+              <button type="button" id="btn-stack-run" class="btn primary">Start</button>
+              <button type="button" id="btn-stack-stop" class="btn">Stop</button>
             </div>
-            <div class="launch-toolbar__run row">
-              <button type="button" id="btn-stack-run" class="btn primary">Run / start container</button>
-              <button type="button" id="btn-stack-stop" class="btn">Stop container</button>
-            </div>
+            <p class="hint container-hint">Tip: keep it running, then use the Launch tab.</p>
+            <p id="status-stack" class="status" aria-live="polite"></p>
           </div>
-          <p id="status-stack" class="status" aria-live="polite"></p>
         </section>
       </div>
 
@@ -240,23 +236,24 @@
       >
         <section class="panel panel-nested">
           <div class="row">
-            <button type="button" id="btn-refresh" class="btn primary">Refresh containers</button>
-            <label class="field">
-              <span>Container</span>
-              <select id="sel-container" aria-label="Container"></select>
-            </label>
+            <div id="docker-container-field" class="field">
+              <label>
+                <span>Container</span>
+                <select id="sel-container" aria-label="Container"></select>
+              </label>
+            </div>
             <label class="field field-grow">
               <span>Tool</span>
               <select id="sel-tool" aria-label="Tool script"></select>
             </label>
-            <button type="button" id="btn-run" class="btn">Run tool</button>
+            <button type="button" id="btn-run" class="btn primary">Run</button>
           </div>
           <p id="status-docker" class="status" aria-live="polite"></p>
         </section>
 
         <section class="panel panel-nested">
           <h2>Output</h2>
-          <pre id="out" class="out">Choose a container and tool, then Run.</pre>
+          <pre id="out" class="out">Choose a tool, then run it.</pre>
         </section>
       </div>
 

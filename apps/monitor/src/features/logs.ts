@@ -1,14 +1,50 @@
 /**
  * Logs tab: tail container main process (`docker logs` via /api/probe) vs launch script file
- * (`/api/launch/log`). Read-only; complements Launch and Docker / tools.
+ * (`/api/launch/log`). Read-only; complements Launch and Tools.
  */
 
 import { pickPreferredContainer } from "./container-preferences";
 
-/** tqdm / progress bars use \\r; expand so each update is visible in <pre>. */
+/** Render terminal CR behavior so progress bars update in-place. */
 function normalizeProbeText(text: string): string {
   if (!text) return text;
-  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines: string[] = [];
+  let current = "";
+  let cursor = 0;
+
+  const writeChar = (ch: string): void => {
+    if (cursor >= current.length) {
+      current += ch;
+    } else {
+      current = `${current.slice(0, cursor)}${ch}${current.slice(cursor + 1)}`;
+    }
+    cursor += 1;
+  };
+
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (ch === "\r") {
+      if (text[i + 1] === "\n") {
+        lines.push(current);
+        current = "";
+        cursor = 0;
+        i += 1;
+      } else {
+        cursor = 0;
+      }
+      continue;
+    }
+    if (ch === "\n") {
+      lines.push(current);
+      current = "";
+      cursor = 0;
+      continue;
+    }
+    writeChar(ch);
+  }
+
+  lines.push(current);
+  return lines.join("\n");
 }
 
 type ContainerRow = {

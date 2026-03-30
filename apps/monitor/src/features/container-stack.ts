@@ -48,6 +48,43 @@ function setToolbarBusy(busy: boolean): void {
   if (btnRefresh) btnRefresh.disabled = busy;
 }
 
+function imageMatches(actual: string, expected: string): boolean {
+  const a = actual.trim();
+  const e = expected.trim();
+  return a === e || a.startsWith(`${e}@`);
+}
+
+async function selectDefaultPresetFromRunningContainer(): Promise<void> {
+  if (!selPreset || presets.length === 0) return;
+  try {
+    const res = await fetch("/api/containers");
+    const body = (await res.json()) as { containers?: ContainerRow[] };
+    if (!res.ok) return;
+    const rows = body.containers ?? [];
+    if (rows.length === 0) return;
+
+    // Prefer exact running container-name match first.
+    for (const p of presets) {
+      const row = rows.find((r) => stripSlashName(r.Names) === p.containerName);
+      if (row) {
+        selPreset.value = p.id;
+        return;
+      }
+    }
+
+    // If name does not match, fall back to image match.
+    for (const p of presets) {
+      const row = rows.find((r) => imageMatches(r.Image, p.image));
+      if (row) {
+        selPreset.value = p.id;
+        return;
+      }
+    }
+  } catch {
+    // Keep current selection on lookup failures.
+  }
+}
+
 async function loadPresets(): Promise<void> {
   if (!selPreset) return;
   try {
@@ -78,7 +115,8 @@ async function loadPresets(): Promise<void> {
       opt.textContent = `${p.label} (${p.containerName})`;
       selPreset.appendChild(opt);
     }
-    setStatus("Pick a preset, then run or start the container on the host.");
+    await selectDefaultPresetFromRunningContainer();
+    setStatus("Pick a preset, then start or stop the host container.");
   } catch (e) {
     selPreset.innerHTML = "";
     const opt = document.createElement("option");
@@ -110,7 +148,7 @@ async function refreshStatus(): Promise<void> {
       );
     } else {
       setStatus(
-        `Not running — ${p.containerName} is not in docker ps. Use “Run / start container” to create or start it.`,
+        `Not running — ${p.containerName} is not in docker ps. Use Start to create or run it.`,
       );
     }
   } catch (e) {

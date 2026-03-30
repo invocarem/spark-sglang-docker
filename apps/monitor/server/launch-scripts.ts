@@ -21,17 +21,53 @@ export const CONTAINER_SCRIPTS_DIR = "/workspace/scripts";
  */
 export const LAUNCH_LOG_PATH = "/workspace/.monitor/sglang-launch.log";
 
-const LAUNCH_LOG_TAIL_LINES = Math.min(
+const DEFAULT_LAUNCH_LOG_TAIL_LINES = Math.min(
   Math.max(1, Number(process.env.MONITOR_LAUNCH_LOG_TAIL ?? "800")),
   10_000,
 );
 
 const BASENAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\.sh$/;
 
-/** Make file-captured progress lines readable in plain text / HTML pre (tqdm uses \\r). */
+/** Render terminal CR behavior so progress bars update in-place. */
 export function normalizeLaunchLogText(text: string): string {
   if (!text) return text;
-  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines: string[] = [];
+  let current = "";
+  let cursor = 0;
+
+  const writeChar = (ch: string): void => {
+    if (cursor >= current.length) {
+      current += ch;
+    } else {
+      current = `${current.slice(0, cursor)}${ch}${current.slice(cursor + 1)}`;
+    }
+    cursor += 1;
+  };
+
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (ch === "\r") {
+      if (text[i + 1] === "\n") {
+        lines.push(current);
+        current = "";
+        cursor = 0;
+        i += 1;
+      } else {
+        cursor = 0;
+      }
+      continue;
+    }
+    if (ch === "\n") {
+      lines.push(current);
+      current = "";
+      cursor = 0;
+      continue;
+    }
+    writeChar(ch);
+  }
+
+  lines.push(current);
+  return lines.join("\n");
 }
 
 export function listLaunchScripts(): { id: string; label: string; pathInContainer: string }[] {
@@ -119,7 +155,10 @@ export type LaunchLogResult =
   | { ok: false; error: string };
 
 /** Last lines of the launch log inside the container (for UI / API). */
-export async function getLaunchLogTail(container: string): Promise<LaunchLogResult> {
+export async function getLaunchLogTail(
+  container: string,
+  tailLines: number = DEFAULT_LAUNCH_LOG_TAIL_LINES,
+): Promise<LaunchLogResult> {
   try {
     assertSafeContainerName(container);
   } catch (e) {
@@ -128,7 +167,7 @@ export async function getLaunchLogTail(container: string): Promise<LaunchLogResu
   const r = await dockerExec(container, [
     "tail",
     "-n",
-    String(LAUNCH_LOG_TAIL_LINES),
+    String(Math.min(Math.max(1, Math.trunc(tailLines)), 10_000)),
     LAUNCH_LOG_PATH,
   ]);
   if (r.code !== 0) {
