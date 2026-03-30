@@ -61,13 +61,12 @@
         <section class="panel panel-nested">
           <h2>Stack container (host Docker)</h2>
           <p class="launch-lead">
-            Create or start a dev container on the host (same idea as <code>./run-docker.sh</code> and
-            <code>./run-sglang.sh</code>): GPU, shm, port <code>8000</code>, HF cache and this repo
-            mounted at <code>/workspace</code>. The process keeps the container alive
-            (<code>sleep infinity</code>) so the <strong>Launch</strong> tab can
-            <code>docker exec</code> your <code>scripts/*.sh</code>. Presets share host port
-            <code>8000</code> by default—only one can run at a time unless you change
-            <code>MONITOR_STACK_HOST_PORT</code>.
+            Presets use the same <code>docker run</code> flags as <code>containers/run-docker.sh</code> and
+            <code>containers/run-docker-openai.sh</code> (GPU, shm, port, mounts, env). From a terminal you
+            can run those scripts for an interactive <code>bash</code> session; this tab starts a detached
+            container with <code>sleep infinity</code> so the <strong>Launch</strong> tab can
+            <code>docker exec</code> <code>scripts/*.sh</code>. Default host port is <code>8000</code> unless
+            you set <code>MONITOR_STACK_HOST_PORT</code>.
           </p>
           <details class="launch-more">
             <summary>Env / paths</summary>
@@ -199,11 +198,11 @@
         <section class="panel panel-nested">
           <h2>Container logs</h2>
           <p class="logs-lead">
-            Two different sources: <strong>Docker logs</strong> is the container&rsquo;s main process only
-            (same as <code>docker logs</code> on the host).
-            <strong>Launch script log</strong> is <code>/workspace/.monitor/sglang-launch.log</code>
-            (output from scripts started on the <strong>Launch</strong> tab — it does not appear in
-            <code>docker logs</code>).
+            Prefer <strong>Launch script log</strong>
+            (<code>/workspace/.monitor/sglang-launch.log</code>): that is where <strong>Launch</strong>
+            tab scripts run (via <code>docker exec</code>), including load progress. Monitor stack
+            containers use <code>sleep infinity</code> as PID&nbsp;1, so <strong>Docker logs</strong>
+            (same as host <code>docker logs</code>) is usually almost empty—not your LLM session.
           </p>
           <div class="logs-toolbar row">
             <button type="button" id="btn-logs-refresh-containers" class="btn">Refresh containers</button>

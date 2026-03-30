@@ -21,6 +21,12 @@ type ToolInfo = {
 };
 
 const DEFAULT_TOOL_ID = "collect_env";
+
+function normalizeProbeText(text: string): string {
+  if (!text) return text;
+  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
 /** Shown when `GET /api/tools` fails; ids must match `apps/monitor/server/docker.ts` `TOOLS`. */
 const FALLBACK_PROBE_TOOLS: readonly { id: string; text: string }[] = [
   { id: DEFAULT_TOOL_ID, text: "collect_env.py — Full stack JSON" },
@@ -62,10 +68,10 @@ function formatProbeResponse(body: Record<string, unknown>): string {
   }
   if (fmt === "text") {
     const parts: string[] = [];
-    if (typeof body.stdout === "string" && body.stdout) parts.push(body.stdout);
+    if (typeof body.stdout === "string" && body.stdout) parts.push(normalizeProbeText(body.stdout));
     if (typeof body.stderr === "string" && body.stderr) {
       parts.push("--- stderr ---");
-      parts.push(body.stderr);
+      parts.push(normalizeProbeText(body.stderr));
     }
     if (parts.length === 0) return prettyJson(body);
     return parts.join("\n");
@@ -165,7 +171,16 @@ async function runTool(): Promise<void> {
       `/api/probe?container=${encodeURIComponent(container)}&tool=${encodeURIComponent(tool)}`,
     );
     const body = (await res.json()) as Record<string, unknown>;
-    outEl.textContent = formatProbeResponse(body);
+    let display = formatProbeResponse(body);
+    if (
+      res.ok &&
+      tool === "docker_logs" &&
+      !String((body as { stdout?: string }).stdout ?? "").trim() &&
+      !String((body as { stderr?: string }).stderr ?? "").trim()
+    ) {
+      display = `${display}\n\n---\nMonitor stack PID 1 is usually \`sleep infinity\`, so this stays empty. For LLM/load output, open the Logs tab and use “Launch script log”.`;
+    }
+    outEl.textContent = display;
     if (!res.ok) {
       setDockerStatus(
         typeof body.error === "string" ? body.error : `Run failed (${res.status})`,

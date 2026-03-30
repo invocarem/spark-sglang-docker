@@ -113,8 +113,8 @@ export type ToolMeta = ExecToolMeta | DockerLogsToolMeta | DockerInspectToolMeta
 export const TOOLS: readonly ToolMeta[] = [
   {
     id: "docker_logs",
-    label: "docker logs",
-    description: `Host: docker logs --tail ${DOCKER_LOGS_TAIL_LINES} (main process only; Launch tab output is in /workspace/.monitor/sglang-launch.log)`,
+    label: "docker logs (PID 1 only)",
+    description: `Host: docker logs --tail ${DOCKER_LOGS_TAIL_LINES}. Monitor stack PID1 is sleep—not LLM output—expect near-empty; use Logs tab → launch script file for loads.`,
     format: "text",
     kind: "docker_logs",
     tailLines: DOCKER_LOGS_TAIL_LINES,

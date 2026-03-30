@@ -22,11 +22,17 @@ export const CONTAINER_SCRIPTS_DIR = "/workspace/scripts";
 export const LAUNCH_LOG_PATH = "/workspace/.monitor/sglang-launch.log";
 
 const LAUNCH_LOG_TAIL_LINES = Math.min(
-  Math.max(1, Number(process.env.MONITOR_LAUNCH_LOG_TAIL ?? "400")),
+  Math.max(1, Number(process.env.MONITOR_LAUNCH_LOG_TAIL ?? "800")),
   10_000,
 );
 
 const BASENAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\.sh$/;
+
+/** Make file-captured progress lines readable in plain text / HTML pre (tqdm uses \\r). */
+export function normalizeLaunchLogText(text: string): string {
+  if (!text) return text;
+  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
 
 export function listLaunchScripts(): { id: string; label: string; pathInContainer: string }[] {
   const scriptsDir = path.join(findRepoRoot(), "scripts");
@@ -139,7 +145,7 @@ export async function getLaunchLogTail(container: string): Promise<LaunchLogResu
       error: err || `tail failed (exit ${r.code ?? "?"})`,
     };
   }
-  return { ok: true, text: r.stdout };
+  return { ok: true, text: normalizeLaunchLogText(r.stdout) };
 }
 
 export async function runLaunchScriptInContainer(
@@ -169,10 +175,16 @@ export async function runLaunchScriptInContainer(
 
   const inContainer = `${CONTAINER_SCRIPTS_DIR}/${scriptBasename}`;
   const logPath = LAUNCH_LOG_PATH;
+  /**
+   * Detached `docker exec` has no TTY; many loaders disable or break progress bars without one.
+   * `script -qefc` (util-linux) allocates a pseudo-terminal when available; fall back to plain bash.
+   */
+  const runScript =
+    `(command -v script >/dev/null 2>&1 && script -qefc "bash ${inContainer}" - || bash ${inContainer}) >> ${logPath} 2>&1`;
   const shellCmd = [
     "mkdir -p /workspace/.monitor",
     `printf '%s\\n' "---- $(date -u +%Y-%m-%dT%H:%M:%SZ) starting ${scriptBasename} ----" >> ${logPath}`,
-    `bash ${inContainer} >> ${logPath} 2>&1`,
+    runScript,
   ].join(" && ");
   const { code, stderr } = await dockerExecDetached(container, ["sh", "-c", shellCmd]);
   if (code !== 0) {

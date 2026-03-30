@@ -1,7 +1,7 @@
 /**
- * Container tab: start/stop whitelisted stack images on the host (`docker run` / `docker start` / `docker stop`),
- * matching repo `run-docker.sh` and `run-sglang.sh`. After the container is up, use the Launch tab for
- * `sglang.launch_server` via ./scripts.
+ * Container tab: start/stop stack presets on the host (`docker run` / start / stop). Each preset mirrors
+ * `containers/run-docker.sh` or `containers/run-docker-openai.sh`; the server uses a detached main process
+ * for the Launch tab. Use the shell scripts directly for `-it … bash`.
  */
 
 type StackPreset = {

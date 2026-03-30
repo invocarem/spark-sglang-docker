@@ -5,6 +5,12 @@
 
 import { pickPreferredContainer } from "./container-preferences";
 
+/** tqdm / progress bars use \\r; expand so each update is visible in <pre>. */
+function normalizeProbeText(text: string): string {
+  if (!text) return text;
+  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
 type ContainerRow = {
   ID: string;
   Names: string;
@@ -54,15 +60,15 @@ function formatDockerProbe(body: Record<string, unknown>): string {
   if (typeof body.error === "string" && body.error) {
     const extra =
       typeof body.stderr === "string" && body.stderr
-        ? `\n--- stderr ---\n${body.stderr}`
+        ? `\n--- stderr ---\n${normalizeProbeText(body.stderr)}`
         : "";
     return `${body.error}${extra}`;
   }
   const parts: string[] = [];
-  if (typeof body.stdout === "string" && body.stdout) parts.push(body.stdout);
+  if (typeof body.stdout === "string" && body.stdout) parts.push(normalizeProbeText(body.stdout));
   if (typeof body.stderr === "string" && body.stderr) {
     parts.push("--- stderr ---");
-    parts.push(body.stderr);
+    parts.push(normalizeProbeText(body.stderr));
   }
   if (parts.length === 0) return "(No lines.)";
   return parts.join("\n");
@@ -98,9 +104,9 @@ async function refreshLog(options: { quiet?: boolean } = {}): Promise<void> {
         setStatus("Launch log file not found.");
         return;
       }
-      const t = typeof body.text === "string" ? body.text : "";
+      const t = typeof body.text === "string" ? normalizeProbeText(body.text) : "";
       outEl.textContent = t.trim() ? t : "(Log file is empty.)";
-      setStatus(`Launch log — ${container}`);
+      setStatus(`Launch script log — ${container}`);
       return;
     }
 
@@ -117,8 +123,12 @@ async function refreshLog(options: { quiet?: boolean } = {}): Promise<void> {
       );
       return;
     }
-    outEl.textContent = formatDockerProbe(body);
-    setStatus(`Docker logs (main process) — ${container}`);
+    const dockerText = formatDockerProbe(body);
+    const looksEmpty = dockerText === "(No lines.)" || dockerText.trim() === "";
+    outEl.textContent = looksEmpty
+      ? `${dockerText}\n\n---\nMonitor stack containers use PID 1 \`sleep infinity\`; \`docker logs\` only shows that process, not \`docker exec\` / Launch tab scripts. For model load progress and server output, switch Source to “Launch script log”.`
+      : dockerText;
+    setStatus(`Docker logs (PID 1) — ${container}`);
   } catch (e) {
     outEl.textContent = e instanceof Error ? e.message : String(e);
     setStatus("Request failed.", true);

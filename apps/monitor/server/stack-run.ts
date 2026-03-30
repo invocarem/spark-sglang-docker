@@ -1,7 +1,9 @@
 /**
  * Whitelisted `docker run` presets for the stack dev container (host API).
- * Matches repo `run-docker.sh` / `run-sglang.sh`: GPUs, shm, port 8000, HF cache + repo bind mounts.
- * Main process is `sleep infinity` so the container stays up for `docker exec` (Launch tab scripts).
+ * Each preset mirrors the flags in repo `containers/run-docker.sh` and
+ * `containers/run-docker-openai.sh` (GPU, shm, port, mounts, env, image, name).
+ * The monitor uses `docker run -d` with `sleep infinity` instead of `-it … bash` so
+ * the process works without a TTY and the Launch tab can `docker exec`.
  */
 
 import os from "node:os";
@@ -12,22 +14,30 @@ import { findRepoRoot } from "./repo-root.js";
 export type StackPreset = {
   id: string;
   label: string;
+  /** For documentation only; same layout as `containers/*.sh`. */
+  matchesScript: string;
   containerName: string;
   image: string;
+  /** Extra `docker run -e` pairs after HF_TOKEN (e.g. OpenAI/tiktoken image). */
+  extraEnv: readonly string[];
 };
 
 export const STACK_PRESETS: readonly StackPreset[] = [
   {
     id: "dgx_spark_tf5",
     label: "SciTrera DGX Spark SGLang (tf5)",
+    matchesScript: "containers/run-docker.sh",
     containerName: "sglang_node_tf5",
     image: "scitrera/dgx-spark-sglang:0.5.9-t5",
+    extraEnv: [],
   },
   {
     id: "lmsys_spark",
     label: "LM.Sys SGLang (spark)",
+    matchesScript: "containers/run-docker-openai.sh",
     containerName: "sglang_node",
     image: "lmsysorg/sglang:spark",
+    extraEnv: ["TIKTOKEN_ENCODINGS_BASE=/tiktoken_encodings"],
   },
 ] as const;
 
@@ -128,6 +138,9 @@ export async function runStackPreset(presetId: string): Promise<RunStackResult> 
   if (token) {
     args.push("-e", `HF_TOKEN=${token}`);
   }
+  for (const e of preset.extraEnv) {
+    args.push("-e", e);
+  }
   args.push(preset.image, "sleep", "infinity");
 
   const run = await dockerHost(args);
@@ -144,7 +157,7 @@ export async function runStackPreset(presetId: string): Promise<RunStackResult> 
     ok: true,
     container: preset.containerName,
     started: true,
-    message: `Created and started ${preset.containerName} (${preset.image}). Repo mounted at /workspace; host port ${port} → 8000.`,
+    message: `Created and started ${preset.containerName} (same flags as ${preset.matchesScript}; monitor uses sleep infinity). Host port ${port}→8000; repo at /workspace.`,
   };
 }
 
