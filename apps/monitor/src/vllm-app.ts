@@ -4,7 +4,7 @@
 
 import { fetchVllmConfig } from "./vllm/vllm-config";
 
-const VLLM_CONTAINER = "vllm-node-tf5";
+const VLLM_CONTAINER = "vllm_node";
 const DEFAULT_TOOL_ID = "collect_env";
 
 type VllmStackStatusBody =

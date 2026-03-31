@@ -8,9 +8,9 @@ import path from "node:path";
 import { assertSafeContainerName, dockerHost } from "./docker.js";
 import { findRepoRoot } from "./repo-root.js";
 
-export const VLLM_TEST_CONTAINER = "vllm-node-tf5";
+export const VLLM_TEST_CONTAINER = "vllm_node";
 
-const DEFAULT_IMAGE = "vllm/vllm-openai:latest";
+const DEFAULT_IMAGE = "vllm-node-tf5:latest";
 
 function hostPort(): string {
   const n = Number(process.env.MONITOR_STACK_HOST_PORT ?? "8000");
