@@ -11,7 +11,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: path.resolve(root, "index.html"),
-        vllm: path.resolve(root, "vllm.html"),
       },
     },
   },
