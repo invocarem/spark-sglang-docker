@@ -211,6 +211,15 @@ export const TOOLS: readonly ToolMeta[] = [
     runner: "python3",
   },
   {
+    id: "vision_benchmark",
+    label: "vision_benchmark.py",
+    description:
+      "Vision pass-rate benchmark (screenshots/vision_tasks.jsonl + image checkers) — VISION_BENCH_MODEL / VISION_BENCH_INPUT",
+    format: "json",
+    path: `${WORKSPACE_TOOLS}/vision_benchmark.py`,
+    runner: "python3",
+  },
+  {
     id: "hf_env",
     label: "hf_env.py",
     description: "Hugging Face env as JSON (token masked)",

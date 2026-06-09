@@ -26,11 +26,11 @@ export type StackPreset = {
 
 export const STACK_PRESETS: readonly StackPreset[] = [
   {
-    id: "dgx_spark_tf5",
-    label: "SciTrera DGX Spark SGLang (tf5)",
+    id: "dgx_spark_0.5.11",
+    label: "SciTrera DGX Spark SGLang (0.5.11)",
     matchesScript: "containers/run-docker.sh",
-    containerName: "sglang_node_tf5",
-    image: "scitrera/dgx-spark-sglang:0.5.9-t5",
+    containerName: "sglang_node_0.5.11",
+    image: "scitrera/dgx-spark-sglang:0.5.11",
     extraEnv: [],
   },
   {
